@@ -50,6 +50,14 @@ return {
         .. "Examples: Facebook, Yelp, Instagram, Zillow, LinkedIn, Nextdoor, Reddit, "
         .. "social network alerts, connection/profile/comment/follow/review notifications.",
     },
+    {
+      name = "Finacial",
+      mailbox = "Finance",
+      description = "automated emails from banks, brokers, IRA, 401k, HSA, checking,"
+        .. "savings accounts, loans, etc. could be a transaction for a loan, trading, or funding"
+        .. "an account. Examples: Statements, payment recieved, account alert, low balance,"
+        .. "payment due, withdrawls, deposits, dividend notifications etc.",
+    },
   },
 
   -- System-level instructions sent to the LLM.
