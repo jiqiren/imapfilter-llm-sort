@@ -18,7 +18,7 @@ return {
     style = os.getenv("OPENAI_API_STYLE") or "responses",
 
     -- HTTP timeout in seconds.
-    timeout_seconds = tonumber(os.getenv("OPENAI_TIMEOUT_SECONDS")) or 30,
+    timeout_seconds = tonumber(os.getenv("OPENAI_TIMEOUT_SECONDS")) or 600,
 
     -- Verbose logging to stderr.
     debug = os.getenv("OPENAI_CLASSIFIER_DEBUG") == "1",

@@ -191,7 +191,7 @@ function OpenAIEmailClassifier.new(options)
     url = options.url,
     model = options.model,
     style = options.style or "responses",
-    timeout = tonumber(options.timeout_seconds) or 30,
+    timeout = tonumber(options.timeout_seconds) or 600,
     debug = options.debug or false,
     categories = options.categories or {},
     system_prompt = options.system_prompt,
