@@ -7,6 +7,7 @@ Unknown categories leave messages in INBOX (conservative by design).
 ## Files
 
 - `imapfilter-openai-classifier.lua`: reusable classifier module.
+- `imapfilter-classifier-cache.lua`: SQLite result cache (skips API for repeat messages).
 - `imapfilter-sort.lua`: imapfilter config entry point.
 - `config.example.lua`: reference config — copy to `~/.config/imapfilter-llm-sort/config.lua`.
 
@@ -25,6 +26,8 @@ brew install luarocks
 luarocks --lua-version 5.5 install luasocket
 luarocks --lua-version 5.5 install luasec
 luarocks --lua-version 5.5 install dkjson
+luarocks --lua-version 5.5 install dromozoa-sqlite3
+luarocks --lua-version 5.5 install md5
 ```
 
 ### 3. Configure
@@ -60,6 +63,7 @@ in the environment).
 | `OPENAI_TIMEOUT_SECONDS` | `api.timeout_seconds` | `600` | HTTP request timeout in seconds |
 | `OPENAI_CLASSIFIER_DEBUG` | `api.debug` | (off) | Set to `1` to log raw API responses to stderr |
 | `OPENAI_CLASSIFIER_CONFIG` | — | `~/.config/imapfilter-llm-sort/config.lua` | Override config file path |
+| `OPENAI_CLASSIFIER_CACHE` | `sqlite.path` | `~/.config/imapfilter-llm-sort/classifications.db` | SQLite cache database path |
 | `IMAP_SERVER` | `imap.server` | `imap.example.com` | IMAP server hostname |
 | `IMAP_USER` | `imap.username` | `you@example.com` | IMAP username / email |
 | `IMAP_PASSWORD` | `imap.password` | — (required) | IMAP password or app password |
@@ -97,6 +101,27 @@ export OPENAI_CLASSIFIER_DEBUG=1
 ```
 
 Writes raw API responses and HTTP status codes to stderr.
+
+## Classification cache
+
+A SQLite database records every classification result. On subsequent runs,
+messages with the same Message-Id, model, and config are returned immediately
+without hitting the API — saving time and tokens.
+
+The cache is stored at `~/.config/imapfilter-llm-sort/classifications.db` by
+default. Override with `OPENAI_CLASSIFIER_CACHE` or `config.sqlite.path`.
+
+**What's cached:** the config hash (deterministic MD5 of categories, model,
+system prompt, truncation), Message-Id, model name, token counts, and the
+classified destination (including `""` for unknown).
+
+**Cache invalidation:** changing categories, model, system prompt, or
+truncation settings produces a new config hash — old entries are ignored
+but not deleted. Run `sqlite3 ~/.config/imapfilter-llm-sort/classifications.db` for
+manual inspection or cleanup.
+
+When `OPENAI_CLASSIFIER_DEBUG=1`, cache hits, misses, and stores are logged
+to stderr.
 
 ## Customizing categories
 
