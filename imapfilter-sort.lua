@@ -45,6 +45,10 @@ local cache_path = (config.sqlite and config.sqlite.path)
   or os.getenv("HOME") .. "/.config/imapfilter-llm-sort/classifications.db"
 local cache = ClassifierCache.new({ path = cache_path })
 
+if config.api.debug then
+  io.stderr:write("Cache: " .. cache_path .. "\n")
+end
+
 local destinations = {}
 for _, cat in ipairs(config.categories) do
   destinations[cat.name] = account[cat.mailbox]

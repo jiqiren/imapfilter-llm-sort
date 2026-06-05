@@ -274,7 +274,17 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache)
   if cache and message_id and message_id ~= "" then
     local cached = cache:lookup(self.config_hash, message_id, self.model)
     if cached then
+      if self.debug then
+        io.stderr:write(string.format(
+          "OpenAI classifier: cache hit %s → \"%s\" (in:%d out:%d)\n",
+          message_id, cached.destination, cached.tokens_in, cached.tokens_out
+        ))
+      end
       return cached.destination, cached.tokens_in, cached.tokens_out
+    elseif self.debug then
+      io.stderr:write(string.format(
+        "OpenAI classifier: cache miss %s\n", message_id
+      ))
     end
   end
 
@@ -362,6 +372,12 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache)
 
   if cache and message_id and message_id ~= "" then
     cache:store(self.config_hash, message_id, self.model, input_tokens, output_tokens, category)
+    if self.debug then
+      io.stderr:write(string.format(
+        "OpenAI classifier: cached %s → \"%s\" (in:%d out:%d)\n",
+        message_id, category ~= "" and category or "INBOX", input_tokens, output_tokens
+      ))
+    end
   end
 
   return category, input_tokens, output_tokens
