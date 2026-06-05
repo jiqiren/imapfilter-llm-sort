@@ -70,22 +70,80 @@ local recent = inbox:is_newer(config.imap.lookback_days)
 
 io.stderr:write("imapfilter-llm-sort: processing " .. #recent .. " messages\n")
 
+local total_time = 0
+local min_time = math.huge
+local max_time = 0
+local total_input = 0
+local total_output = 0
+local min_input = math.huge
+local max_input = 0
+local min_output = math.huge
+local max_output = 0
+local classified = 0
+local moved = 0
+local start_time = os.clock()
+
 local n = 0
 for _, message in ipairs(recent) do
   n = n + 1
   local mailbox, uid = table.unpack(message)
-  local category = classify(mailbox, uid)
+  local t0 = os.clock()
+  local category, input_tokens, output_tokens = classify(mailbox, uid)
+  local elapsed = os.clock() - t0
 
-  io.stderr:write(string.format("  [%d/%d] → %s\n", n, #recent, category ~= "" and category or "INBOX"))
+  total_time = total_time + elapsed
+  total_input = total_input + input_tokens
+  total_output = total_output + output_tokens
+
+  if elapsed > 0 then
+    if elapsed < min_time then min_time = elapsed end
+    if elapsed > max_time then max_time = elapsed end
+  end
+  if input_tokens > 0 then
+    if input_tokens < min_input then min_input = input_tokens end
+    if input_tokens > max_input then max_input = input_tokens end
+  end
+  if output_tokens > 0 then
+    if output_tokens < min_output then min_output = output_tokens end
+    if output_tokens > max_output then max_output = output_tokens end
+  end
+
+  local label = category ~= "" and category or "INBOX"
+  io.stderr:write(string.format(
+    "  [%d/%d] %.1fs in:%d out:%d → %s\n",
+    n, #recent, elapsed, input_tokens, output_tokens, label
+  ))
 
   if moves[category] ~= nil then
-    table.insert(moves[category], message)
+    classified = classified + 1
+    local msg_set = Set { message }
+    msg_set:move_messages(destinations[category])
+    moved = moved + 1
   end
 end
 
-for category, messages in pairs(moves) do
-  if #messages > 0 then
-    io.stderr:write(string.format("moving %d messages to %s\n", #messages, category))
-    messages:move_messages(destinations[category])
-  end
+local total_elapsed = os.clock() - start_time
+io.stderr:write(string.format(
+  "Summary: %d msgs, %d classified, %d moved, %.1fs total\n",
+  #recent, classified, moved, total_elapsed
+))
+if classified > 0 then
+  local avg_time = total_time / classified
+  local avg_input = total_input / classified
+  local avg_output = total_output / classified
+  if min_time == math.huge then min_time = 0 end
+  if min_input == math.huge then min_input = 0 end
+  if min_output == math.huge then min_output = 0 end
+  io.stderr:write(string.format(
+    "Classify time (s): min=%.1f max=%.1f avg=%.1f\n",
+    min_time, max_time, avg_time
+  ))
+  io.stderr:write(string.format(
+    "Input tokens:     min=%d max=%d avg=%.0f total=%d\n",
+    min_input, max_input, avg_input, total_input
+  ))
+  io.stderr:write(string.format(
+    "Output tokens:    min=%d max=%d avg=%.0f total=%d\n",
+    min_output, max_output, avg_output, total_output
+  ))
 end

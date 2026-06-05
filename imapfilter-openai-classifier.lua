@@ -301,7 +301,7 @@ function OpenAIEmailClassifier:classify_email(email)
     if self.debug then
       io.stderr:write("OpenAI classifier: request failed: " .. tostring(code) .. "\n")
     end
-    return ""
+    return "", 0, 0
   end
 
   local raw = table.concat(response_body)
@@ -310,13 +310,22 @@ function OpenAIEmailClassifier:classify_email(email)
     io.stderr:write("OpenAI classifier response:\n" .. raw .. "\n")
   end
 
+  local input_tokens, output_tokens = 0, 0
+  do
+    local ok_parse, parsed = pcall(dkjson.decode, raw)
+    if ok_parse and type(parsed) == "table" and parsed.usage then
+      input_tokens = parsed.usage.input_tokens or 0
+      output_tokens = parsed.usage.output_tokens or 0
+    end
+  end
+
   local code_num = tonumber(code)
 
   if not code_num or code_num < 200 or code_num >= 300 then
     if self.debug then
       io.stderr:write("OpenAI classifier HTTP error: " .. tostring(code) .. "\n")
     end
-    return ""
+    return "", input_tokens, output_tokens
   end
 
   local valid_names = {}
@@ -324,7 +333,7 @@ function OpenAIEmailClassifier:classify_email(email)
     table.insert(valid_names, cat.name)
   end
 
-  return parse_response(raw, valid_names, self.debug)
+  return parse_response(raw, valid_names, self.debug), input_tokens, output_tokens
 end
 
 return OpenAIEmailClassifier
