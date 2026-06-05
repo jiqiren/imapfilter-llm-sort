@@ -97,8 +97,8 @@ return {
     -- How many days back to look for messages.
     lookback_days = tonumber(os.getenv("IMAP_LOOKBACK_DAYS")) or 1,
 
-    -- Alternatively, a specific date (e.g. "2026-06-01"). Takes precedence
-    -- over lookback_days when set.
+    -- Alternatively, a specific date (e.g. "2026-06-01"). Only messages from
+    -- that single day are processed. Takes precedence over lookback_days.
     lookback_day = os.getenv("IMAP_LOOKBACK_DAY"),
   },
 }

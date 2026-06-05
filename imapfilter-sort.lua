@@ -71,15 +71,21 @@ end
 
 local inbox = account.INBOX
 local lookback_days = config.imap.lookback_days or 1
+local next_day_days = nil
 if config.imap.lookback_day and config.imap.lookback_day ~= "" then
   local y, m, d = config.imap.lookback_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$")
   if y then
     local target = os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d) })
-    local diff = math.max(0, os.time() - target)
-    lookback_days = math.max(1, math.ceil(diff / 86400))
+    local next_day = target + 86400
+    local now = os.time()
+    lookback_days = math.max(1, math.ceil((now - target) / 86400))
+    next_day_days = math.max(0, math.ceil((now - next_day) / 86400))
   end
 end
 local recent = inbox:is_newer(lookback_days)
+if next_day_days and next_day_days > 0 then
+  recent = recent - inbox:is_newer(next_day_days)
+end
 
 io.stderr:write("imapfilter-llm-sort: processing " .. #recent .. " messages\n")
 

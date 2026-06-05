@@ -42,8 +42,32 @@ Edit `~/.config/imapfilter-llm-sort/config.lua`:
 - Adjust `categories[]` to define your own sorting rules (name, mailbox, LLM description).
 - Update the path in `imapfilter-sort.lua` if you cloned the repo elsewhere.
 
-Most values can also be set via environment variables (`IMAP_SERVER`,
-`IMAP_USER`, `IMAP_PASSWORD`, `IMAP_SSL`, `IMAP_LOOKBACK_DAYS`).
+All config values can be set via environment variables; the config file falls
+back to them automatically.
+
+## Environment variables
+
+All are optional if set in `config.lua`, but `OPENAI_API_KEY` and
+`IMAP_PASSWORD` are required at runtime (at least one of those two must be set
+in the environment).
+
+| Variable | Config key | Default | Description |
+|---|---|---|---|
+| `OPENAI_API_KEY` | `api.key` | — (required) | API key for the LLM endpoint |
+| `OPENAI_URL` | `api.url` | `https://api.openai.com/v1/responses` | API endpoint URL |
+| `OPENAI_MODEL` | `api.model` | `gpt-4.1-mini` | Model name to request |
+| `OPENAI_API_STYLE` | `api.style` | `responses` | API protocol: `"responses"` or `"chat"` |
+| `OPENAI_TIMEOUT_SECONDS` | `api.timeout_seconds` | `600` | HTTP request timeout in seconds |
+| `OPENAI_CLASSIFIER_DEBUG` | `api.debug` | (off) | Set to `1` to log raw API responses to stderr |
+| `OPENAI_CLASSIFIER_CONFIG` | — | `~/.config/imapfilter-llm-sort/config.lua` | Override config file path |
+| `IMAP_SERVER` | `imap.server` | `imap.example.com` | IMAP server hostname |
+| `IMAP_USER` | `imap.username` | `you@example.com` | IMAP username / email |
+| `IMAP_PASSWORD` | `imap.password` | — (required) | IMAP password or app password |
+| `IMAP_SSL` | `imap.ssl` | `tls1.2` | SSL/TLS version string |
+| `IMAP_LOOKBACK_DAYS` | `imap.lookback_days` | `1` | Process messages from the last N days |
+| `IMAP_LOOKBACK_DAY` | `imap.lookback_day` | — | Process messages from a single date (`YYYY-MM-DD`) |
+
+`IMAP_LOOKBACK_DAY` takes precedence over `IMAP_LOOKBACK_DAYS` when set.
 
 ## Run
 
