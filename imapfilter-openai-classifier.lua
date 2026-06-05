@@ -184,7 +184,12 @@ local function parse_response(raw, valid_names, debug)
     return text
   end
 
-  local text = body.output_text or body.text or body.content
+  local function string_or_nil(v)
+    if type(v) == "string" and v ~= "" then return v end
+    return nil
+  end
+
+  local text = string_or_nil(body.output_text) or string_or_nil(body.text) or string_or_nil(body.content)
     or extract_text_from_choices(body)
     or extract_text_from_output(body, debug)
 
