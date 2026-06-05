@@ -155,14 +155,25 @@ local function parse_response(raw, valid_names)
 
   local function extract_text_from_output(obj)
     local output = obj.output
-    if type(output) == "table" and #output > 0 then
-      local item = output[1]
-      local content = item.content
-      if type(content) == "table" and #content > 0 then
-        return content[1].text
+    if type(output) ~= "table" then
+      return nil
+    end
+    for _, item in ipairs(output) do
+      if type(item) == "table" and item.type == "message" then
+        local content = item.content
+        if type(content) == "table" and #content > 0 then
+          return content[1].text
+        end
       end
     end
     return nil
+  end
+
+  local function strip_markdown_fences(text)
+    if not text then return nil end
+    text = text:gsub("^```[%w]*%s*\n", "")
+    text = text:gsub("\n```%s*$", "")
+    return text
   end
 
   local text = body.output_text or body.text or body.content
@@ -170,6 +181,7 @@ local function parse_response(raw, valid_names)
     or extract_text_from_output(body)
 
   if text and type(text) == "string" then
+    text = strip_markdown_fences(text)
     local ok2, nested = pcall(dkjson.decode, text)
     if ok2 and type(nested) == "table" and nested.category then
       return normalize_category(nested.category, valid_names)
