@@ -56,11 +56,15 @@ for _, cat in ipairs(config.categories) do
 end
 
 local function classify(mailbox, uid)
-  local email = {
-    from = fetch_first(mailbox, uid, "From"),
-    subject = fetch_first(mailbox, uid, "Subject"),
-    body = mailbox[uid]:fetch_body() or "",
-  }
+  local from = fetch_first(mailbox, uid, "From")
+  local subject = fetch_first(mailbox, uid, "Subject")
+  local body = mailbox[uid]:fetch_body() or ""
+
+  if config.api.debug then
+    io.stderr:write(string.format("  From: %s\n  Subject: %s\n", from, subject))
+  end
+
+  local email = { from = from, subject = subject, body = body }
 
   return classifier:classify_email(email)
 end
