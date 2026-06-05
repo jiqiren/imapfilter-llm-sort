@@ -239,7 +239,9 @@ function OpenAIEmailClassifier:classify_email(email)
     io.stderr:write("OpenAI classifier response:\n" .. raw .. "\n")
   end
 
-  if not code or code < 200 or code >= 300 then
+  local code_num = tonumber(code)
+
+  if not code_num or code_num < 200 or code_num >= 300 then
     if self.debug then
       io.stderr:write("OpenAI classifier HTTP error: " .. tostring(code) .. "\n")
     end
