@@ -1,42 +1,53 @@
-# imapfilter OpenAI Email Sorting
+# imapfilter LLM Email Sorting
 
-First-cut local email sorter for imapfilter. It checks `INBOX` messages newer
-than one day, asks an OpenAI-compatible endpoint for one category, and moves
-only confident matches into existing mailboxes.
-
-Possible categories:
-
-- `coupon`: offers, coupons, solicitations, deals, sales, brand/store/restaurant
-  marketing, and list mail trying to get you to buy something.
-- `NewsL`: newsletters, magazines, newspapers, Substack, library notices,
-  digests, and editorial/informational list mail.
-- `Board`: automated notifications from social/community/account services such
-  as Facebook, Yelp, Instagram, Zillow, LinkedIn, Nextdoor, or Reddit.
-- empty string: leave in `INBOX`.
+Classifies recent INBOX messages using an OpenAI-compatible LLM, then moves
+them into IMAP mailboxes by category. Runs as an imapfilter config script.
+Unknown categories leave messages in INBOX (conservative by design).
 
 ## Files
 
 - `imapfilter-openai-classifier.lua`: reusable classifier module.
-- `imapfilter-example.lua`: example imapfilter config fragment.
+- `imapfilter-example.lua`: example imapfilter config.
+- `config.example.lua`: reference config — copy to `~/.config/imapfilter-llm-sort/config.lua`.
 
 ## Setup
 
-Install imapfilter if needed:
+### 1. Install imapfilter
 
 ```sh
 brew install imapfilter
 ```
 
-Edit `imapfilter-example.lua`:
+### 2. Install Lua dependencies
 
-- Set your IMAP server.
-- Set your IMAP username.
-- Confirm the destination mailboxes already exist and are named exactly
-  `coupon`, `NewsL`, and `Board`.
-- Replace `dofile("./imapfilter-openai-classifier.lua")` with an absolute path
-  if you run imapfilter from another directory.
+```sh
+brew install luarocks
+luarocks --lua-version 5.5 install luasocket
+luarocks --lua-version 5.5 install luasec
+luarocks --lua-version 5.5 install dkjson
+```
 
-Run against OpenAI Responses API:
+### 3. Configure
+
+Copy and edit the config file:
+
+```sh
+mkdir -p ~/.config/imapfilter-llm-sort
+cp config.example.lua ~/.config/imapfilter-llm-sort/config.lua
+```
+
+Edit `~/.config/imapfilter-llm-sort/config.lua`:
+- Set `imap.server`, `imap.username`, `imap.ssl`.
+- Confirm destination mailboxes exist with the names listed in `categories[].mailbox`.
+- Adjust `categories[]` to define your own sorting rules (name, mailbox, LLM description).
+- Update the path in `imapfilter-example.lua` if you cloned the repo elsewhere.
+
+Most values can also be set via environment variables (`IMAP_SERVER`,
+`IMAP_USER`, `IMAP_PASSWORD`, `IMAP_SSL`, `IMAP_LOOKBACK_DAYS`).
+
+## Run
+
+### OpenAI Responses API (default)
 
 ```sh
 export OPENAI_API_KEY="..."
@@ -44,7 +55,7 @@ export IMAP_PASSWORD="..."
 imapfilter -c imapfilter-example.lua
 ```
 
-Run against an OpenAI-compatible Chat Completions endpoint:
+### OpenAI-compatible Chat Completions endpoint
 
 ```sh
 export OPENAI_API_KEY="..."
@@ -55,13 +66,28 @@ export OPENAI_MODEL="your-model"
 imapfilter -c imapfilter-example.lua
 ```
 
-Optional debug output:
+### Debug mode
 
 ```sh
 export OPENAI_CLASSIFIER_DEBUG=1
 ```
 
+Writes raw API responses and HTTP status codes to stderr.
+
+## Customizing categories
+
+Edit the `categories` array in your config. Each entry needs:
+
+```lua
+{ name = "category_name", mailbox = "IMAP_mailbox_name",
+  description = "LLM prompt description of what belongs here" }
+```
+
+The LLM returns one of the `name` values, and messages are moved to the
+corresponding `mailbox`. Unknown/mismatched categories stay in INBOX.
+
 ## Notes
 
 The classifier is intentionally conservative. If the model returns anything
-other than `coupon`, `NewsL`, or `Board`, the message is left in `INBOX`.
+other than a recognized category name, the message is left in `INBOX`.
+Temperature is always 0 for deterministic results.
