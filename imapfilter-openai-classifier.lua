@@ -226,7 +226,7 @@ function OpenAIEmailClassifier:classify_email(email)
   end
 
   local response_body = {}
-  local ok, code, headers, status_line = https.request {
+  local request_params = {
     url = self.url,
     method = "POST",
     headers = {
@@ -236,8 +236,15 @@ function OpenAIEmailClassifier:classify_email(email)
     },
     source = ltn12.source.string(payload),
     sink = ltn12.sink.table(response_body),
-    protocol = "tlsv1_2",
   }
+
+  local use_tls = self.url:sub(1, 8) == "https://"
+  if use_tls then
+    request_params.protocol = "tlsv1_2"
+  end
+
+  local request_fn = use_tls and https.request or http.request
+  local ok, code, headers, status_line = request_fn(request_params)
 
   if self.debug then
     io.stderr:write("OpenAI classifier: ok=" .. tostring(ok) .. " code=" .. tostring(code) .. " status=" .. tostring(status_line) .. "\n")
