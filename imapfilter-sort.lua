@@ -37,6 +37,14 @@ local classifier = OpenAIEmailClassifier.new({
   truncation = config.truncation,
 })
 
+local ClassifierCache = dofile(
+  os.getenv("HOME") .. "/proj/imapfilter-llm-sort/imapfilter-classifier-cache.lua"
+)
+
+local cache_path = (config.sqlite and config.sqlite.path)
+  or os.getenv("HOME") .. "/.config/imapfilter-llm-sort/classifications.db"
+local cache = ClassifierCache.new({ path = cache_path })
+
 local destinations = {}
 for _, cat in ipairs(config.categories) do
   destinations[cat.name] = account[cat.mailbox]
@@ -60,13 +68,14 @@ end
 local function classify(mailbox, uid)
   local from = fetch_first(mailbox, uid, "From")
   local subject = fetch_first(mailbox, uid, "Subject")
+  local message_id = fetch_first(mailbox, uid, "Message-Id")
   local body = mailbox[uid]:fetch_body() or ""
 
-  io.stderr:write(string.format("  %s\n  %s\n", from, subject))
+  io.stderr:write(string.format("  %s\n  %s\n  %s\n", from, subject, message_id))
 
   local email = { from = from, subject = subject, body = body }
 
-  return classifier:classify_email(email)
+  return classifier:classify_email(email, message_id, cache)
 end
 
 local inbox = account.INBOX

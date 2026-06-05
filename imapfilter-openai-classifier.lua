@@ -5,6 +5,8 @@
 --   luarocks --lua-version 5.5 install luasocket
 --   luarocks --lua-version 5.5 install luasec
 --   luarocks --lua-version 5.5 install dkjson
+--   luarocks --lua-version 5.5 install dromozoa-sqlite3
+--   luarocks --lua-version 5.5 install md5
 --
 -- Usage from your imapfilter config:
 --
@@ -13,16 +15,17 @@
 --     categories = { { name = "coupon", ... }, ... },
 --   })
 --
---   local category = classifier:classify_email({
+--   local category, tokens_in, tokens_out = classifier:classify_email({
 --     from = from,
 --     subject = subject,
 --     body = body,
---   })
+--   }, message_id, cache_instance)
 
 local https = require("ssl.https")
 local ltn12 = require("ltn12")
 local http = require("socket.http")
 local dkjson = require("dkjson")
+local md5 = require("md5")
 
 local OpenAIEmailClassifier = {}
 OpenAIEmailClassifier.__index = OpenAIEmailClassifier
@@ -245,12 +248,34 @@ function OpenAIEmailClassifier.new(options)
     truncation = options.truncation or { from = 1000, subject = 1000, body = 12000 },
   }
 
+  local trunc = self.truncation or {}
+  local cat_parts = {}
+  for _, cat in ipairs(self.categories) do
+    table.insert(cat_parts, (cat.name or "") .. "\0" .. (cat.description or ""))
+  end
+  local config_str = table.concat({
+    table.concat(cat_parts, "\0"),
+    self.model or "",
+    self.system_prompt or "",
+    tostring(tonumber(trunc.from) or 0),
+    tostring(tonumber(trunc.subject) or 0),
+    tostring(tonumber(trunc.body) or 0),
+  }, "\0")
+  self.config_hash = md5.sumhexa(config_str)
+
   return setmetatable(self, OpenAIEmailClassifier)
 end
 
-function OpenAIEmailClassifier:classify_email(email)
+function OpenAIEmailClassifier:classify_email(email, message_id, cache)
   if not self.api_key or self.api_key == "" then
     error("OPENAI_API_KEY is required for email classification")
+  end
+
+  if cache and message_id and message_id ~= "" then
+    local cached = cache:lookup(self.config_hash, message_id, self.model)
+    if cached then
+      return cached.destination, cached.tokens_in, cached.tokens_out
+    end
   end
 
   local prompt = build_prompt(email or {}, {
@@ -333,7 +358,13 @@ function OpenAIEmailClassifier:classify_email(email)
     table.insert(valid_names, cat.name)
   end
 
-  return parse_response(raw, valid_names, self.debug), input_tokens, output_tokens
+  local category = parse_response(raw, valid_names, self.debug)
+
+  if cache and message_id and message_id ~= "" then
+    cache:store(self.config_hash, message_id, self.model, input_tokens, output_tokens, category)
+  end
+
+  return category, input_tokens, output_tokens
 end
 
 return OpenAIEmailClassifier
