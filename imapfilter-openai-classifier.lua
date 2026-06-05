@@ -156,19 +156,24 @@ local function parse_response(raw, valid_names, debug)
     return nil
   end
 
-  local function extract_text_from_output(obj)
+  local function extract_text_from_output(obj, debug)
     local output = obj.output
     if type(output) ~= "table" then
+      if debug then io.stderr:write("OpenAI classifier: body.output is not a table\n") end
       return nil
     end
+    if debug then io.stderr:write("OpenAI classifier: output has " .. #output .. " items\n") end
     for _, item in ipairs(output) do
+      if debug then io.stderr:write("OpenAI classifier: output item type=" .. tostring(item.type) .. "\n") end
       if type(item) == "table" and item.type == "message" then
         local content = item.content
+        if debug then io.stderr:write("OpenAI classifier: message content type=" .. type(content) .. " len=" .. tostring(type(content) == "table" and #content or "nil") .. "\n") end
         if type(content) == "table" and #content > 0 then
           return content[1].text
         end
       end
     end
+    if debug then io.stderr:write("OpenAI classifier: no message-type output item found\n") end
     return nil
   end
 
@@ -181,7 +186,7 @@ local function parse_response(raw, valid_names, debug)
 
   local text = body.output_text or body.text or body.content
     or extract_text_from_choices(body)
-    or extract_text_from_output(body)
+    or extract_text_from_output(body, debug)
 
   if text and type(text) == "string" then
     if debug then
