@@ -1,0 +1,4 @@
+*.luac
+*.so
+*.dylib
+.DS_Store
