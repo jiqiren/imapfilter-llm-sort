@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Personal scripts
+mail-sort.zsh
+
 # Compiled Lua sources
 luac.out
 *.luac
