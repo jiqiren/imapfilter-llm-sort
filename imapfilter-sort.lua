@@ -62,7 +62,7 @@ local function classify(mailbox, uid)
   local subject = fetch_first(mailbox, uid, "Subject")
   local body = mailbox[uid]:fetch_body() or ""
 
-  io.stderr:write(string.format("  From: %s\n  Subject: %s\n", from, subject))
+  io.stderr:write(string.format("  %s\n  %s\n", from, subject))
 
   local email = { from = from, subject = subject, body = body }
 
@@ -129,8 +129,7 @@ for i = #recent, 1, -1 do
 
   if moves[category] ~= nil then
     classified = classified + 1
-    local msg_set = Set { message }
-    msg_set:move_messages(destinations[category])
+    mailbox:move_messages(destinations[category], { recent[i] })
     moved = moved + 1
   end
 end
