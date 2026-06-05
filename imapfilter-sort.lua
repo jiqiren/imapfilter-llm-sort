@@ -60,9 +60,7 @@ local function classify(mailbox, uid)
   local subject = fetch_first(mailbox, uid, "Subject")
   local body = mailbox[uid]:fetch_body() or ""
 
-  if config.api.debug then
-    io.stderr:write(string.format("  From: %s\n  Subject: %s\n", from, subject))
-  end
+  io.stderr:write(string.format("  From: %s\n  Subject: %s\n", from, subject))
 
   local email = { from = from, subject = subject, body = body }
 
