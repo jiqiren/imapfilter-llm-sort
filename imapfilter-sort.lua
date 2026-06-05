@@ -10,6 +10,8 @@
 local config_path = os.getenv("OPENAI_CLASSIFIER_CONFIG")
   or os.getenv("HOME") .. "/.config/imapfilter-llm-sort/config.lua"
 
+local socket = require("socket")
+
 local config = dofile(config_path)
 
 local OpenAIEmailClassifier = dofile(
@@ -68,7 +70,16 @@ local function classify(mailbox, uid)
 end
 
 local inbox = account.INBOX
-local recent = inbox:is_newer(config.imap.lookback_days)
+local lookback_days = config.imap.lookback_days or 1
+if config.imap.lookback_day and config.imap.lookback_day ~= "" then
+  local y, m, d = config.imap.lookback_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$")
+  if y then
+    local target = os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d) })
+    local diff = math.max(0, os.time() - target)
+    lookback_days = math.max(1, math.ceil(diff / 86400))
+  end
+end
+local recent = inbox:is_newer(lookback_days)
 
 io.stderr:write("imapfilter-llm-sort: processing " .. #recent .. " messages\n")
 
@@ -83,15 +94,15 @@ local min_output = math.huge
 local max_output = 0
 local classified = 0
 local moved = 0
-local start_time = os.clock()
+local start_time = socket.gettime()
 
 local n = 0
 for i = #recent, 1, -1 do
   n = n + 1
   local mailbox, uid = table.unpack(recent[i])
-  local t0 = os.clock()
+  local t0 = socket.gettime()
   local category, input_tokens, output_tokens = classify(mailbox, uid)
-  local elapsed = os.clock() - t0
+  local elapsed = socket.gettime() - t0
 
   total_time = total_time + elapsed
   total_input = total_input + input_tokens
@@ -124,7 +135,7 @@ for i = #recent, 1, -1 do
   end
 end
 
-local total_elapsed = os.clock() - start_time
+local total_elapsed = socket.gettime() - start_time
 io.stderr:write(string.format(
   "Summary: %d msgs, %d classified, %d moved, %.1fs total\n",
   #recent, classified, moved, total_elapsed
