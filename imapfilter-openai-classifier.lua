@@ -127,18 +127,21 @@ local function normalize_category(category, valid_names)
   return ""
 end
 
-local function parse_response(raw, valid_names)
+local function parse_response(raw, valid_names, debug)
   if not raw or raw == "" then
+    if debug then io.stderr:write("OpenAI classifier: empty response\n") end
     return ""
   end
 
   local ok, parsed = pcall(dkjson.decode, raw)
   if not ok or not parsed then
+    if debug then io.stderr:write("OpenAI classifier: JSON decode failed: " .. tostring(parsed) .. "\n") end
     return ""
   end
 
   local body = parsed
   if type(body) ~= "table" then
+    if debug then io.stderr:write("OpenAI classifier: response not a table\n") end
     return ""
   end
 
@@ -181,17 +184,39 @@ local function parse_response(raw, valid_names)
     or extract_text_from_output(body)
 
   if text and type(text) == "string" then
+    if debug then
+      io.stderr:write("OpenAI classifier: extracted text (" .. #text .. " bytes)\n")
+    end
     text = strip_markdown_fences(text)
+    if debug then
+      io.stderr:write("OpenAI classifier: after stripping fences:\n" .. text .. "\n")
+    end
     local ok2, nested = pcall(dkjson.decode, text)
     if ok2 and type(nested) == "table" and nested.category then
+      if debug then
+        io.stderr:write("OpenAI classifier: parsed category: " .. nested.category .. "\n")
+      end
       return normalize_category(nested.category, valid_names)
+    end
+    if debug then
+      io.stderr:write("OpenAI classifier: nested JSON parse failed: ok=" .. tostring(ok2) .. "\n")
+    end
+  else
+    if debug then
+      io.stderr:write("OpenAI classifier: no nested text found\n")
     end
   end
 
   if body.category then
+    if debug then
+      io.stderr:write("OpenAI classifier: direct category: " .. body.category .. "\n")
+    end
     return normalize_category(body.category, valid_names)
   end
 
+  if debug then
+    io.stderr:write("OpenAI classifier: no category found anywhere\n")
+  end
   return ""
 end
 
@@ -289,7 +314,7 @@ function OpenAIEmailClassifier:classify_email(email)
     table.insert(valid_names, cat.name)
   end
 
-  return parse_response(raw, valid_names)
+  return parse_response(raw, valid_names, self.debug)
 end
 
 return OpenAIEmailClassifier
