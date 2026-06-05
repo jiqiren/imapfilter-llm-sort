@@ -88,9 +88,9 @@ local moved = 0
 local start_time = os.clock()
 
 local n = 0
-for _, message in ipairs(recent) do
+for i = #recent, 1, -1 do
   n = n + 1
-  local mailbox, uid = table.unpack(message)
+  local mailbox, uid = table.unpack(recent[i])
   local t0 = os.clock()
   local category, input_tokens, output_tokens = classify(mailbox, uid)
   local elapsed = os.clock() - t0
