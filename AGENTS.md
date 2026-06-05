@@ -11,7 +11,7 @@ categories leave messages in INBOX (conservative by design).
 ```
 imapfilter-llm-sort/
 ├── imapfilter-openai-classifier.lua   # Core module (ssl.https + dkjson)
-├── imapfilter-example.lua             # Example imapfilter config
+├── imapfilter-sort.lua                 # imapfilter entry point
 ├── config.example.lua                 # Reference config (copy to ~/.config/...)
 ├── README.md                          # User docs
 ├── plan.md                            # Project plan / todo
@@ -24,13 +24,13 @@ User config lives at `~/.config/imapfilter-llm-sort/config.lua`.
 
 ```bash
 lua -e 'dofile("imapfilter-openai-classifier.lua")'   # must not error
-lua -e 'dofile("imapfilter-example.lua")'             # errors on IMAP connect (expected)
+lua -e 'dofile("imapfilter-sort.lua")'             # errors on IMAP connect (expected)
 ```
 
 Integration test requires imapfilter:
 ```bash
 OPENAI_API_KEY=... IMAP_PASSWORD=... OPENAI_CLASSIFIER_DEBUG=1 \
-  imapfilter -c imapfilter-example.lua
+  imapfilter -c imapfilter-sort.lua
 ```
 
 ## Conventions
@@ -44,7 +44,7 @@ OPENAI_API_KEY=... IMAP_PASSWORD=... OPENAI_CLASSIFIER_DEBUG=1 \
 ## Architecture
 
 ```
-config.lua ──▶ imapfilter-example.lua ──dofile()──▶ imapfilter-openai-classifier.lua
+config.lua ──▶ imapfilter-sort.lua ──dofile()──▶ imapfilter-openai-classifier.lua
                                                                │
                                                     ssl.https.request()
                                                                │

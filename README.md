@@ -7,7 +7,7 @@ Unknown categories leave messages in INBOX (conservative by design).
 ## Files
 
 - `imapfilter-openai-classifier.lua`: reusable classifier module.
-- `imapfilter-example.lua`: example imapfilter config.
+- `imapfilter-sort.lua`: imapfilter config entry point.
 - `config.example.lua`: reference config — copy to `~/.config/imapfilter-llm-sort/config.lua`.
 
 ## Setup
@@ -40,7 +40,7 @@ Edit `~/.config/imapfilter-llm-sort/config.lua`:
 - Set `imap.server`, `imap.username`, `imap.ssl`.
 - Confirm destination mailboxes exist with the names listed in `categories[].mailbox`.
 - Adjust `categories[]` to define your own sorting rules (name, mailbox, LLM description).
-- Update the path in `imapfilter-example.lua` if you cloned the repo elsewhere.
+- Update the path in `imapfilter-sort.lua` if you cloned the repo elsewhere.
 
 Most values can also be set via environment variables (`IMAP_SERVER`,
 `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_SSL`, `IMAP_LOOKBACK_DAYS`).
@@ -52,7 +52,7 @@ Most values can also be set via environment variables (`IMAP_SERVER`,
 ```sh
 export OPENAI_API_KEY="..."
 export IMAP_PASSWORD="..."
-imapfilter -c imapfilter-example.lua
+imapfilter -c imapfilter-sort.lua
 ```
 
 ### OpenAI-compatible Chat Completions endpoint
@@ -63,7 +63,7 @@ export IMAP_PASSWORD="..."
 export OPENAI_API_STYLE="chat"
 export OPENAI_URL="http://localhost:1234/v1/chat/completions"
 export OPENAI_MODEL="your-model"
-imapfilter -c imapfilter-example.lua
+imapfilter -c imapfilter-sort.lua
 ```
 
 ### Debug mode

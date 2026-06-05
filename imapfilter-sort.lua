@@ -2,7 +2,7 @@
 --
 -- Fill in the account details, mailbox names, and path to the classifier.
 -- Run with:
---   OPENAI_API_KEY=... IMAP_PASSWORD=... imapfilter -c imapfilter-example.lua
+--   OPENAI_API_KEY=... IMAP_PASSWORD=... imapfilter -c imapfilter-sort.lua
 --
 -- Configuration is loaded from ~/.config/imapfilter-llm-sort/config.lua
 -- Override the path with OPENAI_CLASSIFIER_CONFIG.
