@@ -68,9 +68,15 @@ end
 local inbox = account.INBOX
 local recent = inbox:is_newer(config.imap.lookback_days)
 
+io.stderr:write("imapfilter-llm-sort: processing " .. #recent .. " messages\n")
+
+local n = 0
 for _, message in ipairs(recent) do
+  n = n + 1
   local mailbox, uid = table.unpack(message)
   local category = classify(mailbox, uid)
+
+  io.stderr:write(string.format("  [%d/%d] → %s\n", n, #recent, category ~= "" and category or "INBOX"))
 
   if moves[category] ~= nil then
     table.insert(moves[category], message)
@@ -79,6 +85,7 @@ end
 
 for category, messages in pairs(moves) do
   if #messages > 0 then
+    io.stderr:write(string.format("moving %d messages to %s\n", #messages, category))
     messages:move_messages(destinations[category])
   end
 end

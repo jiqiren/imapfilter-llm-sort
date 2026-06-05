@@ -218,8 +218,15 @@ function OpenAIEmailClassifier:classify_email(email)
 
   http.TIMEOUT = self.timeout
 
+  if self.debug then
+    io.stderr:write(string.format(
+      "OpenAI classifier: calling %s (%s, %d bytes)\n",
+      self.url, self.model, #payload
+    ))
+  end
+
   local response_body = {}
-  local _, code = https.request {
+  local ok, code, headers, status_line = https.request {
     url = self.url,
     method = "POST",
     headers = {
@@ -232,10 +239,20 @@ function OpenAIEmailClassifier:classify_email(email)
     protocol = "tlsv1_2",
   }
 
+  if self.debug then
+    io.stderr:write("OpenAI classifier: ok=" .. tostring(ok) .. " code=" .. tostring(code) .. " status=" .. tostring(status_line) .. "\n")
+  end
+
+  if not ok then
+    if self.debug then
+      io.stderr:write("OpenAI classifier: request failed: " .. tostring(code) .. "\n")
+    end
+    return ""
+  end
+
   local raw = table.concat(response_body)
 
   if self.debug then
-    io.stderr:write("OpenAI classifier status: " .. tostring(code) .. "\n")
     io.stderr:write("OpenAI classifier response:\n" .. raw .. "\n")
   end
 
