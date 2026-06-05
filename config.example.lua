@@ -58,6 +58,21 @@ return {
         .. "an account. Examples: Statements, payment recieved, account alert, low balance,"
         .. "payment due, withdrawls, deposits, dividend notifications etc.",
     },
+    {
+      name = "Money",
+      mailbox = "Money",
+      description = "Investment opportunities, mailing lists focusing on stocks, bonds, real "
+        .. "estate, crypto, or privately traded companies or funds. this can include invitations"
+        .. "to events, webinars, calls, email subscriptions, and other educational products or"
+        .. "activities to invest and grow wealth.",
+    },
+    {
+      name = "Travel",
+      mailbox = "Travel",
+      description = "this is basically the same as coupon except anything that has to do with travel."
+        .. "For example: Airline, hotel, car rental, cruise, train, hostel, camping, and safari."
+        .. "NOT for actual booking, payment, or reservation acknowlegement.",
+    },
   },
 
   -- System-level instructions sent to the LLM.
