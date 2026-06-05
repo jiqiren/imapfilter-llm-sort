@@ -101,4 +101,10 @@ return {
     -- that single day are processed. Takes precedence over lookback_days.
     lookback_day = os.getenv("IMAP_LOOKBACK_DAY"),
   },
+
+  -- Optional SQLite cache for classification results.
+  -- Skips API calls for emails already classified with the same config.
+  sqlite = {
+    path = os.getenv("OPENAI_CLASSIFIER_CACHE") or nil,
+  },
 }

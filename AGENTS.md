@@ -11,6 +11,7 @@ categories leave messages in INBOX (conservative by design).
 ```
 imapfilter-llm-sort/
 ├── imapfilter-openai-classifier.lua   # Core module (ssl.https + dkjson)
+├── imapfilter-classifier-cache.lua    # SQLite cache (dromozoa-sqlite3 + md5)
 ├── imapfilter-sort.lua                 # imapfilter entry point
 ├── config.example.lua                 # Reference config (copy to ~/.config/...)
 ├── README.md                          # User docs
@@ -24,6 +25,7 @@ User config lives at `~/.config/imapfilter-llm-sort/config.lua`.
 
 ```bash
 lua -e 'dofile("imapfilter-openai-classifier.lua")'   # must not error
+lua -e 'dofile("imapfilter-classifier-cache.lua")'     # must not error
 lua -e 'dofile("imapfilter-sort.lua")'             # errors on IMAP connect (expected)
 ```
 
@@ -40,28 +42,38 @@ OPENAI_API_KEY=... IMAP_PASSWORD=... OPENAI_CLASSIFIER_DEBUG=1 \
 - **JSON:** Always use `dkjson.encode()` / `dkjson.decode()`. Never string concat.
 - **No shell:** All HTTP via `ssl.https.request()`. No `io.popen`, `pipe_from`, `pipe_to`.
 - **Config:** Nothing hardcoded. Values come from config file or env vars.
+- **SQLite:** Uses `dromozoa-sqlite3`. Columns are 1-indexed (column 0 is always nil/reserved).
 
 ## Architecture
 
 ```
 config.lua ──▶ imapfilter-sort.lua ──dofile()──▶ imapfilter-openai-classifier.lua
-                                                               │
-                                                    ssl.https.request()
-                                                               │
-                                                               ▼
-                                                      OpenAI-compatible API
+                  │      │                                        │
+                  │      │                              ssl.https.request()
+                  │      │                                        │
+                  │      ▼                                        ▼
+                  │  imapfilter-classifier-cache.lua    OpenAI-compatible API
+                  │      │
+                  │      ▼
+                  │  SQLite (classifications.db)
+                  │
+                  ▼
+              IMAP server
 ```
 
-The classifier module is stateless between `:classify_email()` calls.
+The classifier module is stateless between `:classify_email()` calls. The cache
+module stores past results indexed by config hash + Message-Id + model.
 
 ## Data flow per message
 
-1. Fetch `From`, `Subject`, body from IMAP
-2. Truncate fields to configurable limits
-3. Build prompt from category descriptions in config
-4. POST to LLM API (`/v1/responses` or `/v1/chat/completions`)
-5. Parse JSON response with `dkjson.decode()`
-6. Normalize category against `config.categories[].name` — mismatch → `""`
+1. Fetch `From`, `Subject`, `Message-Id`, body from IMAP
+2. Check SQLite cache for (config_hash, Message-Id, model) — return cached result on hit
+3. Truncate fields to configurable limits
+4. Build prompt from category descriptions in config
+5. POST to LLM API (`/v1/responses` or `/v1/chat/completions`)
+6. Parse JSON response with `dkjson.decode()`
+7. Normalize category against `config.categories[].name` — mismatch → `""`
+8. Store result in SQLite cache (config_hash, Message-Id, model, tokens, destination)
 
 ## API styles
 
@@ -79,6 +91,8 @@ brew install luarocks
 luarocks --lua-version 5.5 install luasocket
 luarocks --lua-version 5.5 install luasec
 luarocks --lua-version 5.5 install dkjson
+luarocks --lua-version 5.5 install dromozoa-sqlite3
+luarocks --lua-version 5.5 install md5
 ```
 
 Runtime: imapfilter 2.8.5 links Lua 5.5.0 + OpenSSL3 (both Homebrew).
