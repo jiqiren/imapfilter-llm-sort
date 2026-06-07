@@ -266,26 +266,37 @@ function OpenAIEmailClassifier.new(options)
   return setmetatable(self, OpenAIEmailClassifier)
 end
 
+function OpenAIEmailClassifier:check_cache(message_id, cache)
+  if not cache or not message_id or message_id == "" then
+    return nil
+  end
+
+  local cached = cache:lookup(self.config_hash, message_id, self.model)
+  if cached then
+    if self.debug then
+      io.stderr:write(string.format(
+        "OpenAI classifier: cache hit %s → \"%s\" (in:%d out:%d)\n",
+        message_id, cached.destination, cached.tokens_in, cached.tokens_out
+      ))
+    end
+    return cached
+  elseif self.debug then
+    io.stderr:write(string.format(
+      "OpenAI classifier: cache miss %s\n", message_id
+    ))
+  end
+
+  return nil
+end
+
 function OpenAIEmailClassifier:classify_email(email, message_id, cache)
   if not self.api_key or self.api_key == "" then
     error("OPENAI_API_KEY is required for email classification")
   end
 
-  if cache and message_id and message_id ~= "" then
-    local cached = cache:lookup(self.config_hash, message_id, self.model)
-    if cached then
-      if self.debug then
-        io.stderr:write(string.format(
-          "OpenAI classifier: cache hit %s → \"%s\" (in:%d out:%d)\n",
-          message_id, cached.destination, cached.tokens_in, cached.tokens_out
-        ))
-      end
-      return cached.destination, cached.tokens_in, cached.tokens_out
-    elseif self.debug then
-      io.stderr:write(string.format(
-        "OpenAI classifier: cache miss %s\n", message_id
-      ))
-    end
+  local cached = self:check_cache(message_id, cache)
+  if cached then
+    return cached.destination, cached.tokens_in, cached.tokens_out
   end
 
   local prompt = build_prompt(email or {}, {

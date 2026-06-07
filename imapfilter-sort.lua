@@ -70,12 +70,20 @@ for _, cat in ipairs(config.categories) do
 end
 
 local function classify(mailbox, uid)
+  local message_id = fetch_first(mailbox, uid, "Message-Id")
+
+  io.stderr:write(string.format("  %s\n", message_id))
+
+  local cached = classifier:check_cache(message_id, cache)
+  if cached then
+    return cached.destination, cached.tokens_in, cached.tokens_out
+  end
+
   local from = fetch_first(mailbox, uid, "From")
   local subject = fetch_first(mailbox, uid, "Subject")
-  local message_id = fetch_first(mailbox, uid, "Message-Id")
   local body = mailbox[uid]:fetch_body() or ""
 
-  io.stderr:write(string.format("  %s\n  %s\n  %s\n", from, subject, message_id))
+  io.stderr:write(string.format("  %s\n  %s\n", from, subject))
 
   local email = { from = from, subject = subject, body = body }
 
