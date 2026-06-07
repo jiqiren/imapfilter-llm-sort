@@ -14,6 +14,7 @@ imapfilter-llm-sort/
 ├── imapfilter-classifier-cache.lua    # SQLite cache (dromozoa-sqlite3 + md5)
 ├── imapfilter-sort.lua                 # imapfilter entry point
 ├── config.example.lua                 # Reference config (copy to ~/.config/...)
+├── macos-loop.zsh                     # Infinite loop runner with CLI arg parsing
 ├── README.md                          # User docs
 ├── plan.md                            # Project plan / todo
 └── AGENTS.md                          # This file
@@ -27,6 +28,7 @@ User config lives at `~/.config/imapfilter-llm-sort/config.lua`.
 lua -e 'dofile("imapfilter-openai-classifier.lua")'   # must not error
 lua -e 'dofile("imapfilter-classifier-cache.lua")'     # must not error
 lua -e 'dofile("imapfilter-sort.lua")'             # errors on IMAP connect (expected)
+zsh -n macos-loop.zsh                                 # must pass syntax check
 ```
 
 Integration test requires imapfilter:
@@ -43,6 +45,7 @@ OPENAI_API_KEY=... IMAP_PASSWORD=... OPENAI_CLASSIFIER_DEBUG=1 \
 - **No shell:** All HTTP via `ssl.https.request()`. No `io.popen`, `pipe_from`, `pipe_to`.
 - **Config:** Nothing hardcoded. Values come from config file or env vars.
 - **SQLite:** Uses `dromozoa-sqlite3`. Columns are 1-indexed (column 0 is always nil/reserved).
+- **Cache-first fetch:** `classify()` fetches `Message-Id` only, then calls `classifier:check_cache()`. From/Subject/body are fetched only on cache miss to avoid unnecessary IMAP traffic.
 
 ## Architecture
 
@@ -66,14 +69,15 @@ module stores past results indexed by config hash + Message-Id + model.
 
 ## Data flow per message
 
-1. Fetch `From`, `Subject`, `Message-Id`, body from IMAP
-2. Check SQLite cache for (config_hash, Message-Id, model) — return cached result on hit
-3. Truncate fields to configurable limits
-4. Build prompt from category descriptions in config
-5. POST to LLM API (`/v1/responses` or `/v1/chat/completions`)
-6. Parse JSON response with `dkjson.decode()`
-7. Normalize category against `config.categories[].name` — mismatch → `""`
-8. Store result in SQLite cache (config_hash, Message-Id, model, tokens, destination)
+1. Fetch `Message-Id` from IMAP
+2. Check SQLite cache via `classifier:check_cache()` for (config_hash, Message-Id, model) — return cached result on hit
+3. On cache miss, fetch `From`, `Subject`, body from IMAP
+4. Truncate fields to configurable limits
+5. Build prompt from category descriptions in config
+6. POST to LLM API (`/v1/responses` or `/v1/chat/completions`)
+7. Parse JSON response with `dkjson.decode()`
+8. Normalize category against `config.categories[].name` — mismatch → `""`
+9. Store result in SQLite cache (config_hash, Message-Id, model, tokens, destination)
 
 ## API styles
 

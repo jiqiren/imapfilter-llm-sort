@@ -9,6 +9,7 @@ Unknown categories leave messages in INBOX (conservative by design).
 - `imapfilter-openai-classifier.lua`: reusable classifier module.
 - `imapfilter-classifier-cache.lua`: SQLite result cache (skips API for repeat messages).
 - `imapfilter-sort.lua`: imapfilter config entry point.
+- `macos-loop.zsh`: infinite loop runner with CLI argument parsing.
 - `config.example.lua`: reference config — copy to `~/.config/imapfilter-llm-sort/config.lua`.
 
 ## Setup
@@ -101,6 +102,36 @@ export OPENAI_CLASSIFIER_DEBUG=1
 ```
 
 Writes raw API responses and HTTP status codes to stderr.
+
+## Continuous / loop mode
+
+`macos-loop.zsh` runs the classifier in a loop with a configurable sleep
+interval. It exports all needed environment variables and has CLI options to
+override defaults:
+
+```sh
+./macos-loop.zsh \
+  -S imap.fastmail.com \
+  -u me@fastmail.com \
+  -U https://api.openai.com/v1/responses \
+  -m gpt-4.1-mini \
+  -k sk-abc123 \
+  -s 600 \
+  -d
+```
+
+Options:
+- `-s, --sleep SECONDS` — seconds between runs (default: 300, i.e. 5 minutes)
+- `-S, --imap-server HOST` — IMAP server hostname
+- `-u, --imap-user USER` — IMAP username
+- `-U, --openai-url URL` — OpenAI-compatible API endpoint
+- `-m, --model MODEL` — model name
+- `-k, --api-key KEY` — API key
+- `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)
+- `-h, --help` — print usage
+
+CLI options override environment variables. `IMAP_PASSWORD` should still be set
+in the environment since it's not accepted as a CLI flag.
 
 ## Classification cache
 
