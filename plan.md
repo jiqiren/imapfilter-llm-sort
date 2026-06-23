@@ -21,12 +21,12 @@
 
 ### Status Tracking + Model Escalation
 
-- [ ] 1. Update schema in `imapfilter-classifier-cache.lua` — add `status`, `failure_reason`, `updated_at` columns; write migration (rename old → create new → copy as `done` → drop old)
-- [ ] 2. Add `cache:mark_sorting(hash, msg_id, model)` — `INSERT OR IGNORE` with `status='sorting'`
-- [ ] 3. Add `cache:update_done(hash, msg_id, model, tokens_in, tokens_out, destination)` — `UPDATE` to `status='done'`, set tokens/dest/updated_at
-- [ ] 4. Add `cache:mark_failed(hash, msg_id, model, reason)` — `UPDATE` to `status='failed'`, set failure_reason/updated_at
-- [ ] 5. Add `cache:get_stale_ids(status)` — `SELECT message_id FROM classifications WHERE status=?`
-- [ ] 6. Update `cache:lookup()` — add `AND status = 'done'` to WHERE clause
+- [x] 1. Update schema in `imapfilter-classifier-cache.lua` — add `status`, `failure_reason`, `updated_at` columns; write migration (ALTER TABLE ADD COLUMN)
+- [x] 2. Add `cache:mark_sorting(hash, msg_id, model)` — `INSERT OR IGNORE` with `status='sorting'`
+- [x] 3. Add `cache:update_done(hash, msg_id, model, tokens_in, tokens_out, destination)` — `UPDATE` to `status='done'`, set tokens/dest/updated_at
+- [x] 4. Add `cache:mark_failed(hash, msg_id, model, reason)` — `UPDATE` to `status='failed'`, set failure_reason/updated_at
+- [x] 5. Add `cache:get_stale_ids(status)` — `SELECT message_id FROM classifications WHERE status=?`
+- [x] 6. Update `cache:lookup()` — add `AND status = 'done'` to WHERE clause
 - [ ] 7. Update `OpenAIEmailClassifier.new()` — accept `models` chain (comma-separated string → list of model names)
 - [ ] 8. Implement `classify_email()` model chain loop — try each model in order; escalate on `api_timeout`/`http_error`; no escalate on `parse_error`/IMAP failures
 - [ ] 9. Update `imapfilter-sort.lua` — parse comma-separated models from config/env, pass chain to classifier
