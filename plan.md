@@ -41,4 +41,4 @@
 - [x] 13. Add `-m` flag to `macos-loop.zsh` — set `OPENAI_MODEL` (comma-separated)
 - [ ] 14. Update `config.example.lua` — show `model` as comma-separated list, document new flags
 - [ ] 15. Run verification checks (`lua -e 'dofile(...)'` for each module, `zsh -n macos-loop.zsh`)
-- [ ] 16. Fix `classify()` in `imapfilter-sort.lua` — fetch From/Subject/body only on cache miss (currently always fetched, wastes IMAP traffic for cached messages)
+- [x] 16. Fix `classify()` in `imapfilter-sort.lua` — fetch From/Subject/body only on cache miss (currently always fetched, wastes IMAP traffic for cached messages)

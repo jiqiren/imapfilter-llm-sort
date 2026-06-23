@@ -392,19 +392,19 @@ function OpenAIEmailClassifier:_attempt_model(model)
   return category, input_tokens, output_tokens, nil
 end
 
-function OpenAIEmailClassifier:classify_email(email, message_id, cache)
+function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
   if not self.api_key or self.api_key == "" then
     error("OPENAI_API_KEY is required for email classification")
   end
 
   -- Cache-first check (uses first model in chain)
-  local cached = self:check_cache(message_id, cache)
-  if cached then
-    return cached.destination, cached.tokens_in, cached.tokens_out
+  -- If caller already checked cache and passed result, use it directly
+  local cached_result = cached or self:check_cache(message_id, cache)
+  if cached_result then
+    return cached_result.destination, cached_result.tokens_in, cached_result.tokens_out
   end
 
   -- Store email fields for _attempt_model closure
-  self._email_from = email and email.from or ""
   self._email_subject = email and email.subject or ""
   self._email_body = email and email.body or ""
 

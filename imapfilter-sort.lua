@@ -74,7 +74,13 @@ local function classify(mailbox, uid)
 
   io.stderr:write(string.format("  %s\n", message_id))
 
-  -- classify_email handles: cache check → model chain loop → cache write
+  -- Cache-first: check with Message-Id only, avoid fetching body on cache hit
+  local cached = classifier:check_cache(message_id, cache)
+  if cached then
+    return cached.destination, cached.tokens_in, cached.tokens_out
+  end
+
+  -- Cache miss — fetch From/Subject/body for classification
   local from = fetch_first(mailbox, uid, "From")
   local subject = fetch_first(mailbox, uid, "Subject")
   local body = mailbox[uid]:fetch_body() or ""
@@ -83,7 +89,7 @@ local function classify(mailbox, uid)
 
   local email = { from = from, subject = subject, body = body }
 
-  return classifier:classify_email(email, message_id, cache)
+  return classifier:classify_email(email, message_id, cache, cached)
 end
 
 local inbox = account.INBOX
