@@ -67,5 +67,4 @@
 
 ### Correctness
 
-- [ ] 30. Include `api.url` and `api.style` in config hash — currently only categories, models, system_prompt, and truncation are hashed; changing the API endpoint would serve stale cache results from a different API
-- [ ] 31. Add basic unit tests — at minimum test `normalize_category()`, `truncate()`, `build_prompt()`, and `parse_response()` with various API response shapes
+- [ ] 30. Add basic unit tests — at minimum test `normalize_category()`, `truncate()`, `build_prompt()`, and `parse_response()` with various API response shapes
