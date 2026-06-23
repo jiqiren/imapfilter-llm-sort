@@ -45,7 +45,7 @@
 
 ### Documentation
 
-- [ ] 21. Update `README.md` — document model escalation (comma-separated models) and stale row retry on crash
+- [x] 21. Update `README.md` — document model escalation (comma-separated models) and stale row retry on crash
 
 ### Cache Maintenance
 

@@ -49,6 +49,27 @@ Edit `~/.config/imapfilter-llm-sort/config.lua`:
 All config values can be set via environment variables; the config file falls
 back to them automatically.
 
+## Model escalation
+
+You can configure multiple models as a comma-separated list. The classifier tries
+them in order and escalates on transient failures:
+
+- `OPENAI_MODEL="gpt-4.1-mini,gpt-4o"` — try `gpt-4.1-mini` first, fall back to `gpt-4o`
+- `-m gpt-4.1-mini,gpt-4o` in `macos-loop.zsh`
+
+**Escalation rules:**
+- API timeout (`api_timeout`) or HTTP errors (`http_error`) → escalate to next model
+- Parse errors (`parse_error`) or IMAP failures → do NOT escalate (message stays in INBOX)
+
+This lets you use a fast/cheap model first and fall back to a more capable one when
+the first model times out or returns an HTTP error.
+
+## Crash recovery
+
+If imapfilter crashes mid-classification, messages marked as `status='sorting'` in
+the cache are retried at the start of the next run. Messages no longer in INBOX
+are cleaned up automatically.
+
 ## Environment variables
 
 All are optional if set in `config.lua`, but `OPENAI_API_KEY` and
@@ -132,6 +153,9 @@ Options:
 
 CLI options override environment variables. `IMAP_PASSWORD` should still be set
 in the environment since it's not accepted as a CLI flag.
+
+The `-m` flag accepts a comma-separated list for model escalation
+(e.g. `-m gpt-4.1-mini,gpt-4o`).
 
 ## Classification cache
 
