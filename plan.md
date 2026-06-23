@@ -59,4 +59,5 @@
 - [x] 19. Add configurable delay between API calls — prevent rate limit hits when processing large batches
 - [x] 20. Add `--dry-run` flag — classify and log moves without actually moving messages
 - [x] 22. Add exponential backoff on HTTP 429 (rate limit) — retry with increasing delay instead of failing
-- [ ] 23. Add `--max-msgs N` flag — cap messages per run (safety valve for `ALL` folder)
+- [x] 23. Add `--max-msgs N` flag — cap messages per run (safety valve for `ALL` folder)
+- [ ] 26. Apply `--max-msgs` cap to stale retry loop — stale retries also need a safety valve

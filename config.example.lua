@@ -145,6 +145,12 @@ return {
     -- Alternatively, a specific date (e.g. "2026-06-01"). Only messages from
     -- that single day are processed. Takes precedence over lookback_days.
     lookback_day = os.getenv("IMAP_LOOKBACK_DAY"),
+
+    -- Maximum messages to process per run (0 = no limit). Safety valve for
+    -- ALL folder mode to avoid runaway API costs.
+    -- Set IMAP_MAX_MSGS to override (e.g. "50").
+    -- Use -M flag in macos-loop.zsh for the same.
+    max_msgs = tonumber(os.getenv("IMAP_MAX_MSGS")) or 0,
   },
 
   -- Optional SQLite cache for classification results.

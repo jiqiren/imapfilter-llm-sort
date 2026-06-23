@@ -189,8 +189,15 @@ local max_output = 0
 local classified = 0
 local moved = 0
 local start_time = socket.gettime()
+local max_msgs = tonumber(config.imap and config.imap.max_msgs) or 0
+local processed = 0
 
 for _, mb_info in ipairs(mailboxes_to_process) do
+  -- Stop processing more mailboxes if we've hit the cap
+  if max_msgs > 0 and processed >= max_msgs then
+    io.stderr:write(string.format("Max messages reached (%d), stopping.\n", max_msgs))
+    break
+  end
   local mailbox = mb_info.mailbox
   local mb_name = mb_info.name
   local recent = get_recent_set(mailbox)
@@ -199,7 +206,13 @@ for _, mb_info in ipairs(mailboxes_to_process) do
 
   local n = 0
   for i = #recent, 1, -1 do
+    -- Safety valve: cap total messages processed across all folders
+    if max_msgs > 0 and processed >= max_msgs then
+      io.stderr:write(string.format("Max messages reached (%d), stopping.\n", max_msgs))
+      break
+    end
     n = n + 1
+    processed = processed + 1
     local uid = recent[i][2]
     local t0 = socket.gettime()
     local category, input_tokens, output_tokens = classify(mailbox, uid)
