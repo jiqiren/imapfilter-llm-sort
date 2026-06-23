@@ -149,6 +149,10 @@ else
   end
 end
 
+-- Safety valve: max messages per run (shared between stale retry and main loop)
+local max_msgs = tonumber(config.imap and config.imap.max_msgs) or 0
+local processed = 0
+
 -- Retry stale rows from a previous run (only for INBOX — can't know folder for ALL)
 -- Skip in dry-run mode (stale retry involves actual moves)
 if not dry_run and folder == "INBOX" then
@@ -156,8 +160,14 @@ if not dry_run and folder == "INBOX" then
   if #stale_ids > 0 then
     io.stderr:write(string.format("Retrying %d stale message(s) from previous run...\n", #stale_ids))
     for _, msg_id in ipairs(stale_ids) do
+      -- Apply max_msgs cap to stale retries as well
+      if max_msgs > 0 and processed >= max_msgs then
+        io.stderr:write(string.format("Max messages reached (%d), stopping stale retry.\n", max_msgs))
+        break
+      end
       local found = inbox:contains({ uid = msg_id })
       if #found > 0 then
+        processed = processed + 1
         local uid = found[1][2]
         local category, _, _ = classify(inbox, uid)
         if moves[category] ~= nil then
@@ -189,8 +199,6 @@ local max_output = 0
 local classified = 0
 local moved = 0
 local start_time = socket.gettime()
-local max_msgs = tonumber(config.imap and config.imap.max_msgs) or 0
-local processed = 0
 
 for _, mb_info in ipairs(mailboxes_to_process) do
   -- Stop processing more mailboxes if we've hit the cap
