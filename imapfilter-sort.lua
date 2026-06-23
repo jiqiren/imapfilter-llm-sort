@@ -112,6 +112,29 @@ end
 
 io.stderr:write("imapfilter-llm-sort: processing " .. #recent .. " messages\n")
 
+-- Retry stale rows from a previous run that may have crashed mid-classification
+local stale_ids = cache:get_stale_ids_for_config(classifier.config_hash, "sorting")
+if #stale_ids > 0 then
+  io.stderr:write(string.format("Retrying %d stale message(s) from previous run...\n", #stale_ids))
+  for _, msg_id in ipairs(stale_ids) do
+    local found = inbox:contains({ uid = msg_id })
+    if #found > 0 then
+      local uid = found[1][2]
+      local category, _, _ = classify(inbox, uid)
+      if moves[category] ~= nil then
+        io.stderr:write(string.format("  Stale retry: %s → %s\n", msg_id, category))
+        inbox:move_messages(destinations[category], { found[1] })
+      else
+        io.stderr:write(string.format("  Stale retry: %s → INBOX (no match)\n", msg_id))
+      end
+    else
+      io.stderr:write(string.format("  Stale cleanup: %s (no longer in INBOX)\n", msg_id))
+      cache:delete_row(classifier.config_hash, msg_id)
+    end
+  end
+  io.stderr:write("Stale retry complete.\n")
+end
+
 local total_time = 0
 local min_time = math.huge
 local max_time = 0

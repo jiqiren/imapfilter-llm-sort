@@ -208,6 +208,50 @@ function ClassifierCache:get_stale_ids(status)
   return ids
 end
 
+function ClassifierCache:get_stale_ids_for_config(config_hash, status)
+  local stmt = self._db:prepare([[
+    SELECT message_id FROM classifications
+    WHERE config_hash = ? AND status = ?
+  ]])
+
+  if not stmt then
+    return {}
+  end
+
+  stmt:bind_text(1, config_hash)
+  stmt:bind_text(2, status)
+
+  local ids = {}
+  while stmt:step() == 100 do
+    local msg_id = stmt:column(1)
+    if msg_id then
+      table.insert(ids, msg_id)
+    end
+  end
+  stmt:finalize()
+
+  return ids
+end
+
+function ClassifierCache:delete_row(config_hash, message_id)
+  local stmt = self._db:prepare([[
+    DELETE FROM classifications
+    WHERE config_hash = ? AND message_id = ?
+  ]])
+
+  if not stmt then
+    return false
+  end
+
+  stmt:bind_text(1, config_hash)
+  stmt:bind_text(2, message_id)
+
+  stmt:step()
+  stmt:finalize()
+
+  return true
+end
+
 function ClassifierCache:close()
   if self._db then
     self._db:close()

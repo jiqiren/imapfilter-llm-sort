@@ -35,10 +35,20 @@
 - [x] 7. Update `OpenAIEmailClassifier.new()` — accept `models` chain (comma-separated string → list of model names)
 - [x] 8. Implement `classify_email()` model chain loop — try each model in order; escalate on `api_timeout`/`http_error`; no escalate on `parse_error`/IMAP failures
 - [x] 9. Update `imapfilter-sort.lua` — parse comma-separated models from config/env, pass chain to classifier
-- [ ] 10. Update `imapfilter-sort.lua` — stale-row retry at startup (query `status='sorting'`, search INBOX, re-process through normal flow, delete if not found)
+- [x] 10. Update `imapfilter-sort.lua` — stale-row retry at startup (query `status='sorting'`, search INBOX, re-process through normal flow, delete if not found)
 - [x] 11. Update `imapfilter-sort.lua` — restructure `classify()` to call `mark_sorting` before body fetch, handle failure reasons (done as part of item 8)
 - [ ] 12. Add `--folder` flag to `macos-loop.zsh` — support `INBOX`, `ALL`, or specific folder name
 - [x] 13. Add `-m` flag to `macos-loop.zsh` — set `OPENAI_MODEL` (comma-separated)
 - [ ] 14. Update `config.example.lua` — show `model` as comma-separated list, document new flags
-- [ ] 15. Run verification checks (`lua -e 'dofile(...)'` for each module, `zsh -n macos-loop.zsh`)
+- [x] 15. Run verification checks (`lua -e 'dofile(...)'` for each module, `zsh -n macos-loop.zsh`)
 - [x] 16. Fix `classify()` in `imapfilter-sort.lua` — fetch From/Subject/body only on cache miss (currently always fetched, wastes IMAP traffic for cached messages)
+
+### Cache Maintenance
+
+- [ ] 17. Add SQLite cache rotation — configurable max age (e.g. 30 days) or max row count; `DELETE` old entries at startup
+- [ ] 18. Add `cache:vacuum()` — run `VACUUM` after rotation to reclaim disk space
+
+### Reliability
+
+- [ ] 19. Add configurable delay between API calls — prevent rate limit hits when processing large batches
+- [ ] 20. Add `--dry-run` flag — classify and log moves without actually moving messages
