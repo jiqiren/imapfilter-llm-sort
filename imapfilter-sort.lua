@@ -284,3 +284,6 @@ if classified > 0 then
     min_output, max_output, avg_output, total_output
   ))
 end
+
+-- Properly close the SQLite cache (important for loop runner)
+cache:close()

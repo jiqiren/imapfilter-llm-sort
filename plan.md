@@ -53,7 +53,7 @@
 
 - [ ] 17. Add SQLite cache cleanup — at startup, for each cached row verify the corresponding email still exists on IMAP; `DELETE` rows whose email is gone entirely
 - [ ] 18. Add `cache:vacuum()` — run `VACUUM` after rotation to reclaim disk space
-- [ ] 27. Call `cache:close()` at end of `imapfilter-sort.lua` — proper cleanup (important for loop runner)
+- [x] 27. Call `cache:close()` at end of `imapfilter-sort.lua` — proper cleanup (important for loop runner)
 
 ### Reliability
 
@@ -62,3 +62,5 @@
 - [x] 22. Add exponential backoff on HTTP 429 (rate limit) — retry with increasing delay instead of failing
 - [x] 23. Add `--max-msgs N` flag — cap messages per run (safety valve for `ALL` folder)
 - [x] 26. Apply `--max-msgs` cap to stale retry loop — stale retries also need a safety valve
+- [ ] 28. Add signal handler to `macos-loop.zsh` — forward SIGINT/SIGTERM to child `imapfilter` and wait for clean exit (prevents DB corruption on `Ctrl+C`)
+- [ ] 29. Enable SQLite WAL mode in `ClassifierCache.new()` — better crash resilience for loop runner
