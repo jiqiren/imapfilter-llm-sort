@@ -62,6 +62,13 @@ function ClassifierCache.new(options)
 
   local db = sqlite3.open(path)
 
+  -- Enable WAL mode for better crash resilience (important for loop runner)
+  local ok, err = pcall(db.exec, db, "PRAGMA journal_mode=WAL")
+  if not ok then
+    db:close()
+    error("classifier cache: failed to enable WAL mode: " .. tostring(err))
+  end
+
   local ok, err = pcall(db.exec, db, SCHEMA)
   if not ok then
     db:close()

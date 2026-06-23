@@ -63,4 +63,4 @@
 - [x] 23. Add `--max-msgs N` flag — cap messages per run (safety valve for `ALL` folder)
 - [x] 26. Apply `--max-msgs` cap to stale retry loop — stale retries also need a safety valve
 - [ ] 28. Add signal handler to `macos-loop.zsh` — forward SIGINT/SIGTERM to child `imapfilter` and wait for clean exit (prevents DB corruption on `Ctrl+C`)
-- [ ] 29. Enable SQLite WAL mode in `ClassifierCache.new()` — better crash resilience for loop runner
+- [x] 29. Enable SQLite WAL mode in `ClassifierCache.new()` — better crash resilience for loop runner
