@@ -27,9 +27,9 @@ return {
     -- When multiple models are listed, the classifier tries them in order.
     -- On API timeout or HTTP error, it escalates to the next model.
     -- On parse errors or IMAP failures, it does NOT escalate (conservative).
-    -- Set OPENAI_MODEL to override (e.g. "gpt-4.1-mini,gpt-4o").
+    -- Set OPENAI_MODEL to override (e.g. "qwen/qwen3-4b-2507,google/gemma-4-12b").
     -- Use -m flag in macos-loop.zsh for the same.
-    model = os.getenv("OPENAI_MODEL") or "gpt-4.1-mini",
+    model = os.getenv("OPENAI_MODEL") or "qwen/qwen3-4b-2507,google/gemma-4-12b",
 
     -- API style: "responses" (OpenAI /v1/responses) or "chat" (/v1/chat/completions).
     style = os.getenv("OPENAI_API_STYLE") or "responses",

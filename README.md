@@ -54,8 +54,8 @@ back to them automatically.
 You can configure multiple models as a comma-separated list. The classifier tries
 them in order and escalates on transient failures:
 
-- `OPENAI_MODEL="gpt-4.1-mini,gpt-4o"` — try `gpt-4.1-mini` first, fall back to `gpt-4o`
-- `-m gpt-4.1-mini,gpt-4o` in `macos-loop.zsh`
+- `OPENAI_MODEL="qwen/qwen3-4b-2507,google/gemma-4-12b"` — try `qwen/qwen3-4b-2507` first, fall back to `google/gemma-4-12b`
+- `-m qwen/qwen3-4b-2507,google/gemma-4-12b` in `macos-loop.zsh`
 
 **Escalation rules:**
 - API timeout (`api_timeout`) or HTTP errors (`http_error`) → escalate to next model
@@ -87,7 +87,7 @@ in the environment).
 |---|---|---|---|
 | `OPENAI_API_KEY` | `api.key` | — (required) | API key for the LLM endpoint |
 | `OPENAI_URL` | `api.url` | `https://api.openai.com/v1/responses` | API endpoint URL |
-| `OPENAI_MODEL` | `api.model` | `gpt-4.1-mini` | Model name to request |
+| `OPENAI_MODEL` | `api.model` | `qwen/qwen3-4b-2507,google/gemma-4-12b` | Model name to request |
 | `OPENAI_API_STYLE` | `api.style` | `responses` | API protocol: `"responses"` or `"chat"` |
 | `OPENAI_TIMEOUT_SECONDS` | `api.timeout_seconds` | `600` | HTTP request timeout in seconds |
 | `OPENAI_CLASSIFIER_DEBUG` | `api.debug` | (off) | Set to `1` to log raw API responses to stderr |
@@ -148,7 +148,7 @@ override defaults:
   -S imap.fastmail.com \
   -u me@fastmail.com \
   -U https://api.openai.com/v1/responses \
-  -m gpt-4.1-mini \
+  -m qwen/qwen3-4b-2507 \
   -k sk-abc123 \
   -s 600 \
   -d
@@ -169,7 +169,7 @@ CLI options override environment variables. `IMAP_PASSWORD` should still be set
 in the environment since it's not accepted as a CLI flag.
 
 The `-m` flag accepts a comma-separated list for model escalation
-(e.g. `-m gpt-4.1-mini,gpt-4o`).
+(e.g. `-m qwen/qwen3-4b-2507,google/gemma-4-12b`).
 
 ## Classification cache
 
