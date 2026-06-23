@@ -64,3 +64,8 @@
 - [x] 26. Apply `--max-msgs` cap to stale retry loop — stale retries also need a safety valve
 - [x] 28. Add signal handler to `macos-loop.zsh` — forward SIGINT/SIGTERM to child `imapfilter` and wait for clean exit (prevents DB corruption on `Ctrl+C`)
 - [x] 29. Enable SQLite WAL mode in `ClassifierCache.new()` — better crash resilience for loop runner
+
+### Correctness
+
+- [ ] 30. Include `api.url` and `api.style` in config hash — currently only categories, models, system_prompt, and truncation are hashed; changing the API endpoint would serve stale cache results from a different API
+- [ ] 31. Add basic unit tests — at minimum test `normalize_category()`, `truncate()`, `build_prompt()`, and `parse_response()` with various API response shapes
