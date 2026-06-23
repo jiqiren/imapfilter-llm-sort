@@ -24,6 +24,7 @@
 local https = require("ssl.https")
 local ltn12 = require("ltn12")
 local http = require("socket.http")
+local socket = require("socket")
 local dkjson = require("dkjson")
 local md5 = require("md5")
 
@@ -261,6 +262,7 @@ function OpenAIEmailClassifier.new(options)
     models = models_list,             -- full chain for escalation
     style = options.style or "responses",
     timeout = tonumber(options.timeout_seconds) or 600,
+    delay_between_calls = tonumber(options.delay_between_calls) or 0,
     debug = options.debug or false,
     categories = options.categories or {},
     system_prompt = options.system_prompt,
@@ -441,6 +443,10 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
           input_tokens, output_tokens
         ))
       end
+      -- Delay after API call before returning (paces rate limit usage)
+      if self.delay_between_calls > 0 then
+        socket.sleep(self.delay_between_calls)
+      end
       return category, input_tokens, output_tokens
     end
 
@@ -458,7 +464,16 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
       if cache and message_id and message_id ~= "" then
         cache:mark_failed(self.config_hash, message_id, model, failure_reason)
       end
+      -- Delay after API call (even on failure) before returning
+      if self.delay_between_calls > 0 then
+        socket.sleep(self.delay_between_calls)
+      end
       return "", input_tokens, output_tokens
+    end
+
+    -- Delay between model escalations to avoid rate limits
+    if self.delay_between_calls > 0 then
+      socket.sleep(self.delay_between_calls)
     end
   end
 

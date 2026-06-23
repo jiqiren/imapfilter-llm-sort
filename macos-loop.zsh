@@ -17,6 +17,7 @@ Options:
   -U, --openai-url URL   OpenAI-compatible API URL (default: http://127.0.0.1:8080/v1/responses)
   -m, --model MODEL      Model name (default: google/gemma-4-12b)
   -k, --api-key KEY      API key (default: nope)
+  -D, --delay SECONDS    Seconds between API calls (default: 0)
   -d, --debug            Enable debug output
   -h, --help             Show this help message
 
@@ -35,6 +36,7 @@ zparseopts -D -E -F -- \
   {U,-openai-url}:=OPENAI_URL_OPT \
   {m,-model}:=MODEL_OPT \
   {k,-api-key}:=API_KEY_OPT \
+  {D,-delay}:=DELAY_OPT \
   {d,-debug}=DEBUG_OPT \
   {h,-help}=HELP_OPT \
   || usage
@@ -44,6 +46,7 @@ zparseopts -D -E -F -- \
 export OPENAI_URL="${OPENAI_URL_OPT[-1]:-${OPENAI_URL:-http://127.0.0.1:8080/v1/responses}}"
 export OPENAI_MODEL="${MODEL_OPT[-1]:-${OPENAI_MODEL:-google/gemma-4-12b}}"
 export OPENAI_API_KEY="${API_KEY_OPT[-1]:-${OPENAI_API_KEY:-nope}}"
+export OPENAI_DELAY_BETWEEN_CALLS="${DELAY_OPT[-1]:-${OPENAI_DELAY_BETWEEN_CALLS:-0}}"
 if [[ -n $DEBUG_OPT ]]; then
   export OPENAI_CLASSIFIER_DEBUG=1
 else

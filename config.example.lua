@@ -11,6 +11,7 @@
 --   -u USER      IMAP username
 --   -k KEY       API key
 --   -d           Enable debug output
+--   --delay SECS  Seconds between API calls (default: 0, i.e. no delay)
 
 return {
   api = {
@@ -33,6 +34,12 @@ return {
 
     -- HTTP timeout in seconds.
     timeout_seconds = tonumber(os.getenv("OPENAI_TIMEOUT_SECONDS")) or 600,
+
+    -- Seconds to wait between API calls (0 = no delay).
+    -- Prevents rate limit hits when processing large batches.
+    -- Set OPENAI_DELAY_BETWEEN_CALLS to override (e.g. "2" for 2 seconds).
+    -- Use --delay flag in macos-loop.zsh for the same.
+    delay_between_calls = tonumber(os.getenv("OPENAI_DELAY_BETWEEN_CALLS")) or 0,
 
     -- Verbose logging to stderr.
     debug = os.getenv("OPENAI_CLASSIFIER_DEBUG") == "1",

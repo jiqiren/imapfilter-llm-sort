@@ -54,5 +54,5 @@
 
 ### Reliability
 
-- [ ] 19. Add configurable delay between API calls — prevent rate limit hits when processing large batches
+- [x] 19. Add configurable delay between API calls — prevent rate limit hits when processing large batches
 - [ ] 20. Add `--dry-run` flag — classify and log moves without actually moving messages

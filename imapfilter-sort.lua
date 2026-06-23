@@ -31,6 +31,7 @@ local classifier = OpenAIEmailClassifier.new({
   models = config.api.model,
   style = config.api.style,
   timeout_seconds = config.api.timeout_seconds,
+  delay_between_calls = config.api.delay_between_calls,
   debug = config.api.debug,
   categories = config.categories,
   system_prompt = config.system_prompt,
