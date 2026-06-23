@@ -94,12 +94,17 @@ in the environment).
 | `OPENAI_CLASSIFIER_DRY_RUN` | `api.dry_run` | (off) | Set to `1` to classify without moving messages |
 | `OPENAI_CLASSIFIER_CONFIG` | — | `~/.config/imapfilter-llm-sort/config.lua` | Override config file path |
 | `OPENAI_CLASSIFIER_CACHE` | `sqlite.path` | `~/.config/imapfilter-llm-sort/classifications.db` | SQLite cache database path |
+| `OPENAI_DELAY_BETWEEN_CALLS` | `api.delay_between_calls` | `0` | Seconds to wait between API calls (prevents rate limit hits) |
+| `OPENAI_RATE_LIMIT_MAX_RETRIES` | `api.rate_limit_max_retries` | `3` | Max retries on HTTP 429 with exponential backoff |
+| `OPENAI_RATE_LIMIT_INITIAL_DELAY` | `api.rate_limit_initial_delay` | `5` | Initial backoff delay in seconds; doubles each retry |
 | `IMAP_SERVER` | `imap.server` | `imap.example.com` | IMAP server hostname |
 | `IMAP_USER` | `imap.username` | `you@example.com` | IMAP username / email |
 | `IMAP_PASSWORD` | `imap.password` | — (required) | IMAP password or app password |
 | `IMAP_SSL` | `imap.ssl` | `tls1.2` | SSL/TLS version string |
+| `IMAP_FOLDER` | `imap.folder` | `INBOX` | Folder to process (`INBOX`, `ALL`, or specific name) |
 | `IMAP_LOOKBACK_DAYS` | `imap.lookback_days` | `1` | Process messages from the last N days |
 | `IMAP_LOOKBACK_DAY` | `imap.lookback_day` | — | Process messages from a single date (`YYYY-MM-DD`) |
+| `IMAP_MAX_MSGS` | `imap.max_msgs` | `0` | Max messages per run (`0` = no limit, safety valve for `ALL`) |
 
 `IMAP_LOOKBACK_DAY` takes precedence over `IMAP_LOOKBACK_DAYS` when set.
 

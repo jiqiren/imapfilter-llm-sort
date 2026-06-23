@@ -47,7 +47,7 @@
 
 - [x] 21. Update `README.md` — document model escalation (comma-separated models) and stale row retry on crash
 - [x] 24. Update `README.md` — document `--dry-run` / `OPENAI_CLASSIFIER_DRY_RUN`
-- [ ] 25. Update `README.md` env var table — add missing vars (`OPENAI_DELAY_BETWEEN_CALLS`, `OPENAI_RATE_LIMIT_MAX_RETRIES`, `OPENAI_RATE_LIMIT_INITIAL_DELAY`, `IMAP_FOLDER`)
+- [x] 25. Update `README.md` env var table — add missing vars (`OPENAI_DELAY_BETWEEN_CALLS`, `OPENAI_RATE_LIMIT_MAX_RETRIES`, `OPENAI_RATE_LIMIT_INITIAL_DELAY`, `IMAP_FOLDER`, `IMAP_MAX_MSGS`)
 
 ### Cache Maintenance
 
