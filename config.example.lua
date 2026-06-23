@@ -42,6 +42,16 @@ return {
     -- Use --delay flag in macos-loop.zsh for the same.
     delay_between_calls = tonumber(os.getenv("OPENAI_DELAY_BETWEEN_CALLS")) or 0,
 
+    -- When the API returns HTTP 429 (rate limited), retry with exponential
+    -- backoff before escalating to the next model or giving up.
+    -- Set OPENAI_RATE_LIMIT_MAX_RETRIES to override (default: 3).
+    rate_limit_max_retries = tonumber(os.getenv("OPENAI_RATE_LIMIT_MAX_RETRIES")) or 3,
+
+    -- Initial backoff delay in seconds for rate limit retries.
+    -- Each subsequent retry doubles this delay (5s, 10s, 20s, ...).
+    -- Set OPENAI_RATE_LIMIT_INITIAL_DELAY to override (default: 5).
+    rate_limit_initial_delay = tonumber(os.getenv("OPENAI_RATE_LIMIT_INITIAL_DELAY")) or 5,
+
     -- Verbose logging to stderr.
     debug = os.getenv("OPENAI_CLASSIFIER_DEBUG") == "1",
   },

@@ -263,6 +263,8 @@ function OpenAIEmailClassifier.new(options)
     style = options.style or "responses",
     timeout = tonumber(options.timeout_seconds) or 600,
     delay_between_calls = tonumber(options.delay_between_calls) or 0,
+    rate_limit_max_retries = tonumber(options.rate_limit_max_retries) or 3,
+    rate_limit_initial_delay = tonumber(options.rate_limit_initial_delay) or 5,
     debug = options.debug or false,
     categories = options.categories or {},
     system_prompt = options.system_prompt,
@@ -378,6 +380,9 @@ function OpenAIEmailClassifier:_attempt_model(model)
   end
 
   local code_num = tonumber(code)
+  if code_num == 429 then
+    return "", input_tokens, output_tokens, "rate_limit"
+  end
   if not code_num or code_num < 200 or code_num >= 300 then
     return "", input_tokens, output_tokens, "http_error"
   end
@@ -392,6 +397,34 @@ function OpenAIEmailClassifier:_attempt_model(model)
 
   local category = parse_response(raw_for_parse, valid_names, self.debug)
   return category, input_tokens, output_tokens, nil
+end
+
+function OpenAIEmailClassifier:_attempt_with_backoff(model)
+  local category, input_tokens, output_tokens, failure_reason =
+    self:_attempt_model(model)
+
+  -- Exponential backoff retry for rate limits
+  if failure_reason == "rate_limit" then
+    local max_retries = self.rate_limit_max_retries or 3
+    local initial_delay = self.rate_limit_initial_delay or 5
+    for retry = 1, max_retries do
+      local backoff = initial_delay * math.pow(2, retry - 1)
+      if self.debug then
+        io.stderr:write(string.format(
+          "OpenAI classifier: %s rate limited, retrying in %.0fs (attempt %d/%d)\n",
+          model, backoff, retry, max_retries
+        ))
+      end
+      socket.sleep(backoff)
+      category, input_tokens, output_tokens, failure_reason =
+        self:_attempt_model(model)
+      if failure_reason ~= "rate_limit" then
+        break
+      end
+    end
+  end
+
+  return category, input_tokens, output_tokens, failure_reason
 end
 
 function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
@@ -428,7 +461,7 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
     end
 
     local category, input_tokens, output_tokens, failure_reason =
-      self:_attempt_model(model)
+      self:_attempt_with_backoff(model)
 
     if not failure_reason then
       -- Success — store in cache and return
@@ -450,7 +483,7 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
       return category, input_tokens, output_tokens
     end
 
-    -- Escalate on transient failures; stop on parse/data errors
+    -- Escalate on transient failures; stop on parse/data/rate_limit errors
     local should_escalate = (failure_reason == "api_timeout" or failure_reason == "http_error")
     if self.debug then
       io.stderr:write(string.format(
