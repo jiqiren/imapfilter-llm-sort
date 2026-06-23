@@ -46,6 +46,8 @@
 ### Documentation
 
 - [x] 21. Update `README.md` — document model escalation (comma-separated models) and stale row retry on crash
+- [x] 24. Update `README.md` — document `--dry-run` / `OPENAI_CLASSIFIER_DRY_RUN`
+- [ ] 25. Update `README.md` env var table — add missing vars (`OPENAI_DELAY_BETWEEN_CALLS`, `OPENAI_RATE_LIMIT_MAX_RETRIES`, `OPENAI_RATE_LIMIT_INITIAL_DELAY`, `IMAP_FOLDER`)
 
 ### Cache Maintenance
 
@@ -55,6 +57,6 @@
 ### Reliability
 
 - [x] 19. Add configurable delay between API calls — prevent rate limit hits when processing large batches
-- [ ] 20. Add `--dry-run` flag — classify and log moves without actually moving messages
+- [x] 20. Add `--dry-run` flag — classify and log moves without actually moving messages
 - [x] 22. Add exponential backoff on HTTP 429 (rate limit) — retry with increasing delay instead of failing
 - [ ] 23. Add `--max-msgs N` flag — cap messages per run (safety valve for `ALL` folder)

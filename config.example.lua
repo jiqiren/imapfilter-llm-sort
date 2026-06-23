@@ -12,6 +12,7 @@
 --   -k KEY       API key
 --   -d           Enable debug output
 --   -f FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders
+--   -n           Dry-run: classify and log without moving messages
 --   --delay SECS  Seconds between API calls (default: 0, i.e. no delay)
 
 return {
@@ -54,6 +55,12 @@ return {
 
     -- Verbose logging to stderr.
     debug = os.getenv("OPENAI_CLASSIFIER_DEBUG") == "1",
+
+    -- Dry-run mode: classify messages and log what would happen,
+    -- but do NOT move messages or write to the cache.
+    -- Set OPENAI_CLASSIFIER_DRY_RUN=1 to enable.
+    -- Use -n flag in macos-loop.zsh for the same.
+    dry_run = os.getenv("OPENAI_CLASSIFIER_DRY_RUN") == "1",
   },
 
   -- Classification categories. Each entry maps a category name (returned by the

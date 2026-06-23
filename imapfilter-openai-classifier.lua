@@ -266,6 +266,7 @@ function OpenAIEmailClassifier.new(options)
     rate_limit_max_retries = tonumber(options.rate_limit_max_retries) or 3,
     rate_limit_initial_delay = tonumber(options.rate_limit_initial_delay) or 5,
     debug = options.debug or false,
+    dry_run = options.dry_run == true or options.dry_run == "1",
     categories = options.categories or {},
     system_prompt = options.system_prompt,
     truncation = options.truncation or { from = 1000, subject = 1000, body = 12000 },
@@ -456,7 +457,8 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
     end
 
     -- Mark as sorting for this model (INSERT OR IGNORE handles duplicates)
-    if cache and message_id and message_id ~= "" then
+    -- Skip cache writes in dry-run mode
+    if not self.dry_run and cache and message_id and message_id ~= "" then
       cache:mark_sorting(self.config_hash, message_id, model)
     end
 
@@ -464,8 +466,8 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
       self:_attempt_with_backoff(model)
 
     if not failure_reason then
-      -- Success — store in cache and return
-      if cache and message_id and message_id ~= "" then
+      -- Success — store in cache and return (skip cache writes in dry-run mode)
+      if not self.dry_run and cache and message_id and message_id ~= "" then
         cache:update_done(self.config_hash, message_id, model,
           input_tokens, output_tokens, category)
       end
@@ -493,8 +495,8 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
     end
 
     if not should_escalate then
-      -- Non-escalating failure — mark and return
-      if cache and message_id and message_id ~= "" then
+      -- Non-escalating failure — mark and return (skip cache writes in dry-run mode)
+      if not self.dry_run and cache and message_id and message_id ~= "" then
         cache:mark_failed(self.config_hash, message_id, model, failure_reason)
       end
       -- Delay after API call (even on failure) before returning

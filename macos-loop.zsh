@@ -19,6 +19,7 @@ Options:
   -k, --api-key KEY      API key (default: nope)
   -D, --delay SECONDS    Seconds between API calls (default: 0)
   -f, --folder FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders
+  -n, --dry-run          Classify and log without moving messages
   -d, --debug            Enable debug output
   -h, --help             Show this help message
 
@@ -39,6 +40,7 @@ zparseopts -D -E -F -- \
   {k,-api-key}:=API_KEY_OPT \
   {D,-delay}:=DELAY_OPT \
   {f,-folder}:=FOLDER_OPT \
+  {n,-dry-run}=DRY_RUN_OPT \
   {d,-debug}=DEBUG_OPT \
   {h,-help}=HELP_OPT \
   || usage
@@ -57,6 +59,11 @@ fi
 export IMAP_SERVER="${IMAP_SERVER_OPT[-1]:-${IMAP_SERVER:-imap.example.com}}"
 export IMAP_USER="${IMAP_USER_OPT[-1]:-${IMAP_USER:-user@example.com}}"
 export IMAP_FOLDER="${FOLDER_OPT[-1]:-${IMAP_FOLDER:-INBOX}}"
+if [[ -n $DRY_RUN_OPT ]]; then
+  export OPENAI_CLASSIFIER_DRY_RUN=1
+else
+  export OPENAI_CLASSIFIER_DRY_RUN="${OPENAI_CLASSIFIER_DRY_RUN:-0}"
+fi
 #export IMAP_PASSWORD="$(security find-generic-password -a ${USER} -s gmailsecret -w)"
 
 SLEEP_SECONDS="${SLEEP_OPT[-1]:-300}"

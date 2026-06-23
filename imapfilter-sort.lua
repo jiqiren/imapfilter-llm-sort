@@ -32,6 +32,7 @@ local classifier = OpenAIEmailClassifier.new({
   style = config.api.style,
   timeout_seconds = config.api.timeout_seconds,
   delay_between_calls = config.api.delay_between_calls,
+  dry_run = config.api.dry_run,
   debug = config.api.debug,
   categories = config.categories,
   system_prompt = config.system_prompt,
@@ -42,12 +43,17 @@ local ClassifierCache = dofile(
   os.getenv("HOME") .. "/proj/imapfilter-llm-sort/imapfilter-classifier-cache.lua"
 )
 
+local dry_run = config.api.dry_run == true or config.api.dry_run == "1"
 local cache_path = (config.sqlite and config.sqlite.path)
   or os.getenv("HOME") .. "/.config/imapfilter-llm-sort/classifications.db"
 local cache = ClassifierCache.new({ path = cache_path })
 
 if config.api.debug then
   io.stderr:write("Cache: " .. cache_path .. "\n")
+end
+
+if dry_run then
+  io.stderr:write("DRY RUN — messages will be classified but NOT moved\n")
 end
 
 local destinations = {}
@@ -144,7 +150,8 @@ else
 end
 
 -- Retry stale rows from a previous run (only for INBOX — can't know folder for ALL)
-if folder == "INBOX" then
+-- Skip in dry-run mode (stale retry involves actual moves)
+if not dry_run and folder == "INBOX" then
   local stale_ids = cache:get_stale_ids_for_config(classifier.config_hash, "sorting")
   if #stale_ids > 0 then
     io.stderr:write(string.format("Retrying %d stale message(s) from previous run...\n", #stale_ids))
@@ -155,7 +162,9 @@ if folder == "INBOX" then
         local category, _, _ = classify(inbox, uid)
         if moves[category] ~= nil then
           io.stderr:write(string.format("  Stale retry: %s → %s\n", msg_id, category))
-          inbox:move_messages(destinations[category], { found[1] })
+          if not dry_run then
+            inbox:move_messages(destinations[category], { found[1] })
+          end
         else
           io.stderr:write(string.format("  Stale retry: %s → INBOX (no match)\n", msg_id))
         end
@@ -221,7 +230,9 @@ for _, mb_info in ipairs(mailboxes_to_process) do
 
     if moves[category] ~= nil then
       classified = classified + 1
-      mailbox:move_messages(destinations[category], { recent[i] })
+      if not dry_run then
+        mailbox:move_messages(destinations[category], { recent[i] })
+      end
       moved = moved + 1
     end
   end

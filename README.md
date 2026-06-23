@@ -70,6 +70,13 @@ If imapfilter crashes mid-classification, messages marked as `status='sorting'` 
 the cache are retried at the start of the next run. Messages no longer in INBOX
 are cleaned up automatically.
 
+## Dry-run mode
+
+Set `OPENAI_CLASSIFIER_DRY_RUN=1` or use `-n` / `--dry-run` in `macos-loop.zsh` to
+classify messages and log what would happen without actually moving them. This is
+useful for testing new categories or model configurations before committing to
+changes. In dry-run mode, the cache is read but never written to.
+
 ## Environment variables
 
 All are optional if set in `config.lua`, but `OPENAI_API_KEY` and
@@ -84,6 +91,7 @@ in the environment).
 | `OPENAI_API_STYLE` | `api.style` | `responses` | API protocol: `"responses"` or `"chat"` |
 | `OPENAI_TIMEOUT_SECONDS` | `api.timeout_seconds` | `600` | HTTP request timeout in seconds |
 | `OPENAI_CLASSIFIER_DEBUG` | `api.debug` | (off) | Set to `1` to log raw API responses to stderr |
+| `OPENAI_CLASSIFIER_DRY_RUN` | `api.dry_run` | (off) | Set to `1` to classify without moving messages |
 | `OPENAI_CLASSIFIER_CONFIG` | — | `~/.config/imapfilter-llm-sort/config.lua` | Override config file path |
 | `OPENAI_CLASSIFIER_CACHE` | `sqlite.path` | `~/.config/imapfilter-llm-sort/classifications.db` | SQLite cache database path |
 | `IMAP_SERVER` | `imap.server` | `imap.example.com` | IMAP server hostname |
@@ -149,6 +157,7 @@ Options:
 - `-m, --model MODEL` — model name
 - `-k, --api-key KEY` — API key
 - `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)
+- `-n, --dry-run` — classify and log without moving messages
 - `-h, --help` — print usage
 
 CLI options override environment variables. `IMAP_PASSWORD` should still be set
