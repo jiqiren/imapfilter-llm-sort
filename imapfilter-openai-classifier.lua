@@ -308,22 +308,15 @@ function OpenAIEmailClassifier:check_cache(message_id, cache)
   return nil
 end
 
-function OpenAIEmailClassifier:classify_email(email, message_id, cache)
-  if not self.api_key or self.api_key == "" then
-    error("OPENAI_API_KEY is required for email classification")
-  end
+function OpenAIEmailClassifier:_attempt_model(model)
+  local prompt = build_prompt({
+    from = self._email_from,
+    subject = self._email_subject,
+    body = self._email_body,
+  }, { categories = self.categories, truncation = self.truncation })
 
-  local cached = self:check_cache(message_id, cache)
-  if cached then
-    return cached.destination, cached.tokens_in, cached.tokens_out
-  end
-
-  local prompt = build_prompt(email or {}, {
-    categories = self.categories,
-    truncation = self.truncation,
-  })
   local payload = build_payload({
-    model = self.model,
+    model = model,
     style = self.style,
     system_prompt = self.system_prompt,
   }, prompt)
@@ -332,8 +325,8 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache)
 
   if self.debug then
     io.stderr:write(string.format(
-      "OpenAI classifier: calling %s (%s, %d bytes)\n",
-      self.url, self.model, #payload
+      "OpenAI classifier: trying model %s (%s, %d bytes)\n",
+      model, self.url, #payload
     ))
   end
 
@@ -359,58 +352,121 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache)
   local ok, code, headers, status_line = request_fn(request_params)
 
   if self.debug then
-    io.stderr:write("OpenAI classifier: ok=" .. tostring(ok) .. " code=" .. tostring(code) .. " status=" .. tostring(status_line) .. "\n")
+    io.stderr:write(string.format(
+      "OpenAI classifier: %s ok=%s code=%s status=%s\n",
+      model, tostring(ok), tostring(code), tostring(status_line)
+    ))
   end
 
   if not ok then
-    if self.debug then
-      io.stderr:write("OpenAI classifier: request failed: " .. tostring(code) .. "\n")
-    end
-    return "", 0, 0
+    return "", 0, 0, "api_timeout"
   end
 
   local raw = table.concat(response_body)
 
   if self.debug then
-    io.stderr:write("OpenAI classifier response:\n" .. raw .. "\n")
+    io.stderr:write(string.format("OpenAI classifier: %s response:\n%s\n", model, raw))
   end
 
   local input_tokens, output_tokens = 0, 0
-  do
-    local ok_parse, parsed = pcall(dkjson.decode, raw)
-    if ok_parse and type(parsed) == "table" and parsed.usage then
-      input_tokens = parsed.usage.input_tokens or 0
-      output_tokens = parsed.usage.output_tokens or 0
-    end
+  local ok_parse, parsed = pcall(dkjson.decode, raw)
+  if ok_parse and type(parsed) == "table" and parsed.usage then
+    input_tokens = parsed.usage.input_tokens or 0
+    output_tokens = parsed.usage.output_tokens or 0
   end
 
   local code_num = tonumber(code)
-
   if not code_num or code_num < 200 or code_num >= 300 then
-    if self.debug then
-      io.stderr:write("OpenAI classifier HTTP error: " .. tostring(code) .. "\n")
-    end
-    return "", input_tokens, output_tokens
+    return "", input_tokens, output_tokens, "http_error"
   end
+
+  -- Re-encode parsed JSON for parse_response; fall back to raw on parse failure
+  local raw_for_parse = ok_parse and dkjson.encode(parsed) or raw
 
   local valid_names = {}
   for _, cat in ipairs(self.categories) do
     table.insert(valid_names, cat.name)
   end
 
-  local category = parse_response(raw, valid_names, self.debug)
+  local category = parse_response(raw_for_parse, valid_names, self.debug)
+  return category, input_tokens, output_tokens, nil
+end
 
-  if cache and message_id and message_id ~= "" then
-    cache:store(self.config_hash, message_id, self.model, input_tokens, output_tokens, category)
+function OpenAIEmailClassifier:classify_email(email, message_id, cache)
+  if not self.api_key or self.api_key == "" then
+    error("OPENAI_API_KEY is required for email classification")
+  end
+
+  -- Cache-first check (uses first model in chain)
+  local cached = self:check_cache(message_id, cache)
+  if cached then
+    return cached.destination, cached.tokens_in, cached.tokens_out
+  end
+
+  -- Store email fields for _attempt_model closure
+  self._email_from = email and email.from or ""
+  self._email_subject = email and email.subject or ""
+  self._email_body = email and email.body or ""
+
+  -- Build valid category names once
+  local valid_names = {}
+  for _, cat in ipairs(self.categories) do
+    table.insert(valid_names, cat.name)
+  end
+
+  -- Model chain loop: try each model in order, escalate on transient failures
+  for _, model in ipairs(self.models) do
+    if self.debug then
+      io.stderr:write(string.format("OpenAI classifier: attempting model %s\n", model))
+    end
+
+    -- Mark as sorting for this model (INSERT OR IGNORE handles duplicates)
+    if cache and message_id and message_id ~= "" then
+      cache:mark_sorting(self.config_hash, message_id, model)
+    end
+
+    local category, input_tokens, output_tokens, failure_reason =
+      self:_attempt_model(model)
+
+    if not failure_reason then
+      -- Success — store in cache and return
+      if cache and message_id and message_id ~= "" then
+        cache:update_done(self.config_hash, message_id, model,
+          input_tokens, output_tokens, category)
+      end
+      if self.debug then
+        io.stderr:write(string.format(
+          "OpenAI classifier: %s → \"%s\" (in:%d out:%d)\n",
+          model, category ~= "" and category or "INBOX",
+          input_tokens, output_tokens
+        ))
+      end
+      return category, input_tokens, output_tokens
+    end
+
+    -- Escalate on transient failures; stop on parse/data errors
+    local should_escalate = (failure_reason == "api_timeout" or failure_reason == "http_error")
     if self.debug then
       io.stderr:write(string.format(
-        "OpenAI classifier: cached %s → \"%s\" (in:%d out:%d)\n",
-        message_id, category ~= "" and category or "INBOX", input_tokens, output_tokens
+        "OpenAI classifier: %s failed (%s) — escalate=%s\n",
+        model, failure_reason, tostring(should_escalate)
       ))
+    end
+
+    if not should_escalate then
+      -- Non-escalating failure — mark and return
+      if cache and message_id and message_id ~= "" then
+        cache:mark_failed(self.config_hash, message_id, model, failure_reason)
+      end
+      return "", input_tokens, output_tokens
     end
   end
 
-  return category, input_tokens, output_tokens
+  -- All models exhausted
+  if self.debug then
+    io.stderr:write("OpenAI classifier: all models exhausted\n")
+  end
+  return "", 0, 0
 end
 
 return OpenAIEmailClassifier

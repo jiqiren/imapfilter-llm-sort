@@ -19,8 +19,10 @@
 
 ## Notes
 
-- `classify_email()` still calls `cache:store()` which does not exist in the cache module. Items 8 and 11 will restructure this to use `mark_sorting` + `update_done` / `mark_failed` instead. Until then, a live classify run would crash on cache write.
+- `classify_email()` now handles the full flow: cache check → model chain loop → cache write (`mark_sorting`/`update_done`/`mark_failed`).
+- `imapfilter-sort.lua` `classify()` fetches email fields and passes them to `classify_email()` along with the cache instance.
 - Item 13 (`-m` flag) is already implemented in `macos-loop.zsh`.
+- **Item 9 is the critical next step** — the model chain is implemented in the classifier but not wired up from config. Until then, only the first model is used.
 
 ## Planned
 
@@ -33,10 +35,10 @@
 - [x] 5. Add `cache:get_stale_ids(status)` — `SELECT message_id FROM classifications WHERE status=?`
 - [x] 6. Update `cache:lookup()` — add `AND status = 'done'` to WHERE clause
 - [x] 7. Update `OpenAIEmailClassifier.new()` — accept `models` chain (comma-separated string → list of model names)
-- [ ] 8. Implement `classify_email()` model chain loop — try each model in order; escalate on `api_timeout`/`http_error`; no escalate on `parse_error`/IMAP failures
+- [x] 8. Implement `classify_email()` model chain loop — try each model in order; escalate on `api_timeout`/`http_error`; no escalate on `parse_error`/IMAP failures
 - [ ] 9. Update `imapfilter-sort.lua` — parse comma-separated models from config/env, pass chain to classifier
 - [ ] 10. Update `imapfilter-sort.lua` — stale-row retry at startup (query `status='sorting'`, search INBOX, re-process through normal flow, delete if not found)
-- [ ] 11. Update `imapfilter-sort.lua` — restructure `classify()` to call `mark_sorting` before body fetch, handle failure reasons
+- [x] 11. Update `imapfilter-sort.lua` — restructure `classify()` to call `mark_sorting` before body fetch, handle failure reasons (done as part of item 8)
 - [ ] 12. Add `--folder` flag to `macos-loop.zsh` — support `INBOX`, `ALL`, or specific folder name
 - [ ] 13. Add `-m` flag to `macos-loop.zsh` — set `OPENAI_MODEL` (comma-separated)
 - [ ] 14. Update `config.example.lua` — show `model` as comma-separated list, document new flags
