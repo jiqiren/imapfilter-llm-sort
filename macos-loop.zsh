@@ -14,7 +14,7 @@ Options:
   -s, --sleep SECONDS    Seconds between runs (default: 300, i.e. 5 minutes)
   -S, --imap-server HOST IMAP server hostname (default: imap.example.com)
   -u, --imap-user USER   IMAP username (default: user@example.com)
-  -U, --openai-url URL   OpenAI-compatible API URL (default: http://127.0.0.1:8080/v1/responses)
+  -U, --openai-url URL   OpenAI-compatible API URL (default: http://127.0.0.1:1234/v1/responses)
   -m, --model MODEL      Model name (default: qwen/qwen3-4b-2507,google/gemma-4-12b)
   -k, --api-key KEY      API key (default: nope)
   -D, --delay SECONDS    Seconds between API calls (default: 0)
@@ -49,7 +49,7 @@ zparseopts -D -E -F -- \
 
 [[ -n $HELP_OPT ]] && usage
 
-export OPENAI_URL="${OPENAI_URL_OPT[-1]:-${OPENAI_URL:-http://127.0.0.1:8080/v1/responses}}"
+export OPENAI_URL="${OPENAI_URL_OPT[-1]:-${OPENAI_URL:-http://127.0.0.1:1234/v1/responses}}"
 export OPENAI_MODEL="${MODEL_OPT[-1]:-${OPENAI_MODEL:-qwen/qwen3-4b-2507,google/gemma-4-12b}}"
 export OPENAI_API_KEY="${API_KEY_OPT[-1]:-${OPENAI_API_KEY:-nope}}"
 export OPENAI_DELAY_BETWEEN_CALLS="${DELAY_OPT[-1]:-${OPENAI_DELAY_BETWEEN_CALLS:-0}}"
