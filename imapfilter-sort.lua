@@ -165,7 +165,7 @@ if not dry_run and folder == "INBOX" then
         io.stderr:write(string.format("Max messages reached (%d), stopping stale retry.\n", max_msgs))
         break
       end
-      local found = inbox:contains({ uid = msg_id })
+      local found = inbox:contains({ message_id = msg_id })
       if #found > 0 then
         processed = processed + 1
         local uid = found[1][2]

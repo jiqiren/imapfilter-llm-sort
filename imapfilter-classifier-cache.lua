@@ -20,36 +20,128 @@ local SCHEMA = [[
   )
 ]]
 
-local function migrate_old_schema(db)
-  -- Check if old schema exists (no 'status' column)
-  local pragma = db:prepare("PRAGMA table_info(classifications)")
-  if not pragma then
-    return
-  end
+-- Target columns in canonical order. Any DB missing or differing from this set
+-- will be migrated via a safe table recreation (rename → create → copy → drop).
+local TARGET_COLUMNS = {
+  "id", "config_hash", "message_id", "model", "status", "failure_reason",
+  "tokens_in", "tokens_out", "classified_destination", "created_at", "updated_at",
+}
 
-  local has_status = false
+-- Default expression to use when a target column is missing from the old table.
+-- Used to build the INSERT ... SELECT during migration.
+local COLUMN_DEFAULTS = {
+  id                     = "id",
+  config_hash            = "config_hash",
+  message_id             = "message_id",
+  model                  = "model",
+  status                 = "'done'",
+  failure_reason         = "NULL",
+  tokens_in              = "tokens_in",
+  tokens_out             = "tokens_out",
+  classified_destination = "''",
+  created_at             = "created_at",
+  updated_at             = "CURRENT_TIMESTAMP",
+}
+
+local function get_table_columns(db, name)
+  -- PRAGMA table_info returns: cid, name, type, notnull, dflt_value, pk
+  -- dromozoa-sqlite3 columns are 1-indexed (column 0 is reserved/nil)
+  -- So: column(1)=cid, column(2)=name, column(3)=type, etc.
+  local pragma = db:prepare("PRAGMA table_info(" .. name .. ")")
+  if not pragma then
+    return {}
+  end
+  local cols = {}
   while pragma:step() == 100 do
-    local col_name = pragma:column(1)
-    if col_name == "status" then
-      has_status = true
-      break
+    local col_name = pragma:column(2)
+    if col_name then
+      table.insert(cols, col_name)
     end
   end
   pragma:finalize()
+  return cols
+end
 
-  if has_status then
-    return
+local function schema_matches(db)
+  local existing = get_table_columns(db, "classifications")
+  local existing_set = {}
+  for _, c in ipairs(existing) do
+    existing_set[c] = true
   end
+  for _, c in ipairs(TARGET_COLUMNS) do
+    if not existing_set[c] then
+      return false
+    end
+  end
+  return true
+end
 
-  -- SQLite supports ALTER TABLE ADD COLUMN with DEFAULT since 3.30.0
-  local ok, err = pcall(db.exec, db, "ALTER TABLE classifications ADD COLUMN status TEXT NOT NULL DEFAULT 'done'")
-  if not ok then error("classifier cache: migration failed (status): " .. tostring(err)) end
+local function migrate_schema(db)
+  -- Table doesn't exist yet — CREATE TABLE IF NOT EXISTS handled it
+  if not schema_matches(db) then
+    local old_cols = get_table_columns(db, "classifications")
+    local old_set = {}
+    for _, c in ipairs(old_cols) do
+      old_set[c] = true
+    end
 
-  ok, err = pcall(db.exec, db, "ALTER TABLE classifications ADD COLUMN failure_reason TEXT")
-  if not ok then error("classifier cache: migration failed (failure_reason): " .. tostring(err)) end
+    -- Build SELECT expressions: use old column name if present, else default
+    local select_exprs = {}
+    for _, c in ipairs(TARGET_COLUMNS) do
+      if old_set[c] then
+        table.insert(select_exprs, c)
+      else
+        table.insert(select_exprs, COLUMN_DEFAULTS[c])
+      end
+    end
 
-  ok, err = pcall(db.exec, db, "ALTER TABLE classifications ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP")
-  if not ok then error("classifier cache: migration failed (updated_at): " .. tostring(err)) end
+    local old_name = "classifications_old"
+    local col_list = table.concat(TARGET_COLUMNS, ", ")
+    local select_list = table.concat(select_exprs, ", ")
+
+    -- Wrap in a transaction for crash safety
+    local ok, err = pcall(db.exec, db, "BEGIN")
+    if not ok then
+      error("classifier cache: migration failed (BEGIN): " .. tostring(err))
+    end
+
+    ok, err = pcall(db.exec, db, "DROP TABLE IF EXISTS " .. old_name)
+    if not ok then
+      pcall(db.exec, db, "ROLLBACK")
+      error("classifier cache: migration failed (drop old): " .. tostring(err))
+    end
+
+    ok, err = pcall(db.exec, db, "ALTER TABLE classifications RENAME TO " .. old_name)
+    if not ok then
+      pcall(db.exec, db, "ROLLBACK")
+      error("classifier cache: migration failed (rename): " .. tostring(err))
+    end
+
+    ok, err = pcall(db.exec, db, SCHEMA)
+    if not ok then
+      pcall(db.exec, db, "ROLLBACK")
+      error("classifier cache: migration failed (create): " .. tostring(err))
+    end
+
+    local migrate_sql = "INSERT INTO classifications (" .. col_list .. ") "
+      .. "SELECT " .. select_list .. " FROM " .. old_name
+    ok, err = pcall(db.exec, db, migrate_sql)
+    if not ok then
+      pcall(db.exec, db, "ROLLBACK")
+      error("classifier cache: migration failed (copy data): " .. tostring(err))
+    end
+
+    ok, err = pcall(db.exec, db, "DROP TABLE " .. old_name)
+    if not ok then
+      pcall(db.exec, db, "ROLLBACK")
+      error("classifier cache: migration failed (drop old): " .. tostring(err))
+    end
+
+    ok, err = pcall(db.exec, db, "COMMIT")
+    if not ok then
+      error("classifier cache: migration failed (COMMIT): " .. tostring(err))
+    end
+  end
 end
 
 function ClassifierCache.new(options)
@@ -75,8 +167,8 @@ function ClassifierCache.new(options)
     error("classifier cache: failed to create schema: " .. tostring(err))
   end
 
-  -- Migrate old schema if present
-  migrate_old_schema(db)
+  -- Migrate schema if columns don't match the target layout
+  migrate_schema(db)
 
   local self = {
     _db = db,
