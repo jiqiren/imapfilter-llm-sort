@@ -49,7 +49,7 @@
 
 ### Cache Maintenance
 
-- [ ] 17. Add SQLite cache rotation — configurable max age (e.g. 30 days) or max row count; `DELETE` old entries at startup
+- [ ] 17. Add SQLite cache cleanup — at startup, for each cached row verify the corresponding email still exists on IMAP; `DELETE` rows whose email is gone entirely
 - [ ] 18. Add `cache:vacuum()` — run `VACUUM` after rotation to reclaim disk space
 
 ### Reliability
