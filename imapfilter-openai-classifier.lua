@@ -236,10 +236,29 @@ end
 function OpenAIEmailClassifier.new(options)
   options = options or {}
 
+  -- Parse models chain: comma-separated string → list of model names
+  local models_input = options.models or options.model or ""
+  local models_list = {}
+  if type(models_input) == "table" then
+    for _, m in ipairs(models_input) do
+      local trimmed = trim(m)
+      if trimmed ~= "" then table.insert(models_list, trimmed) end
+    end
+  elseif type(models_input) == "string" and models_input ~= "" then
+    for m in models_input:gmatch("[^,]+") do
+      local trimmed = trim(m)
+      if trimmed ~= "" then table.insert(models_list, trimmed) end
+    end
+  end
+  if #models_list == 0 then
+    error("OpenAI classifier: at least one model is required")
+  end
+
   local self = {
     api_key = options.api_key,
     url = options.url,
-    model = options.model,
+    model = models_list[1],          -- first model (backward compat)
+    models = models_list,             -- full chain for escalation
     style = options.style or "responses",
     timeout = tonumber(options.timeout_seconds) or 600,
     debug = options.debug or false,
@@ -255,7 +274,7 @@ function OpenAIEmailClassifier.new(options)
   end
   local config_str = table.concat({
     table.concat(cat_parts, "\0"),
-    self.model or "",
+    table.concat(self.models, ","),   -- use full models chain in hash
     self.system_prompt or "",
     tostring(tonumber(trunc.from) or 0),
     tostring(tonumber(trunc.subject) or 0),

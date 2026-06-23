@@ -17,6 +17,11 @@
 - [x] `macos-loop.zsh` infinite loop runner with CLI arg parsing
 - [x] `AGENTS.md`, `README.md` updated
 
+## Notes
+
+- `classify_email()` still calls `cache:store()` which does not exist in the cache module. Items 8 and 11 will restructure this to use `mark_sorting` + `update_done` / `mark_failed` instead. Until then, a live classify run would crash on cache write.
+- Item 13 (`-m` flag) is already implemented in `macos-loop.zsh`.
+
 ## Planned
 
 ### Status Tracking + Model Escalation
@@ -27,7 +32,7 @@
 - [x] 4. Add `cache:mark_failed(hash, msg_id, model, reason)` — `UPDATE` to `status='failed'`, set failure_reason/updated_at
 - [x] 5. Add `cache:get_stale_ids(status)` — `SELECT message_id FROM classifications WHERE status=?`
 - [x] 6. Update `cache:lookup()` — add `AND status = 'done'` to WHERE clause
-- [ ] 7. Update `OpenAIEmailClassifier.new()` — accept `models` chain (comma-separated string → list of model names)
+- [x] 7. Update `OpenAIEmailClassifier.new()` — accept `models` chain (comma-separated string → list of model names)
 - [ ] 8. Implement `classify_email()` model chain loop — try each model in order; escalate on `api_timeout`/`http_error`; no escalate on `parse_error`/IMAP failures
 - [ ] 9. Update `imapfilter-sort.lua` — parse comma-separated models from config/env, pass chain to classifier
 - [ ] 10. Update `imapfilter-sort.lua` — stale-row retry at startup (query `status='sorting'`, search INBOX, re-process through normal flow, delete if not found)
