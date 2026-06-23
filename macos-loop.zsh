@@ -78,7 +78,28 @@ if [[ ! -f $IMAPFILTERCFG ]]; then
   exit 1
 fi
 
+# Signal handler: forward SIGINT/SIGTERM to child process and wait for clean exit
+# Prevents SQLite DB corruption from abrupt termination
+typeset running_pid=""
+
+forward_signal() {
+  if [[ -n $running_pid ]] then
+    kill "$running_pid" 2>/dev/null
+    wait "$running_pid" 2>/dev/null
+  fi
+  exit 0
+}
+
+trap forward_signal INT TERM
+
 while true; do
-  imapfilter -c "${IMAPFILTERCFG}"
-  sleep "${SLEEP_SECONDS}"
+  imapfilter -c "${IMAPFILTERCFG}" &
+  running_pid=$!
+  wait "$running_pid"
+  running_pid=""
+
+  sleep "${SLEEP_SECONDS}" &
+  running_pid=$!
+  wait "$running_pid"
+  running_pid=""
 done
