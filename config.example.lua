@@ -11,6 +11,7 @@
 --   -u USER      IMAP username
 --   -k KEY       API key
 --   -d           Enable debug output
+--   -f FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders
 --   --delay SECS  Seconds between API calls (default: 0, i.e. no delay)
 
 return {
@@ -114,6 +115,12 @@ return {
     username = os.getenv("IMAP_USER") or "you@example.com",
     password = os.getenv("IMAP_PASSWORD"),
     ssl = os.getenv("IMAP_SSL") or "tls1.2",
+
+    -- Which folder to process. Default: "INBOX".
+    -- Use "ALL" to process every folder (skips [Gmail] system folders).
+    -- Use any folder name like "Work" or "Archive" to process a specific folder.
+    -- Set IMAP_FOLDER env var or use -f flag in macos-loop.zsh to override.
+    folder = os.getenv("IMAP_FOLDER") or "INBOX",
 
     -- How many days back to look for messages.
     lookback_days = tonumber(os.getenv("IMAP_LOOKBACK_DAYS")) or 1,

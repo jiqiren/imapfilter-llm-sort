@@ -37,7 +37,7 @@
 - [x] 9. Update `imapfilter-sort.lua` — parse comma-separated models from config/env, pass chain to classifier
 - [x] 10. Update `imapfilter-sort.lua` — stale-row retry at startup (query `status='sorting'`, search INBOX, re-process through normal flow, delete if not found)
 - [x] 11. Update `imapfilter-sort.lua` — restructure `classify()` to call `mark_sorting` before body fetch, handle failure reasons (done as part of item 8)
-- [ ] 12. Add `--folder` flag to `macos-loop.zsh` — support `INBOX`, `ALL`, or specific folder name
+- [x] 12. Add `--folder` flag to `macos-loop.zsh` — support `INBOX`, `ALL`, or specific folder name
 - [x] 13. Add `-m` flag to `macos-loop.zsh` — set `OPENAI_MODEL` (comma-separated)
 - [x] 14. Update `config.example.lua` — show `model` as comma-separated list, document new flags
 - [x] 15. Run verification checks (`lua -e 'dofile(...)'` for each module, `zsh -n macos-loop.zsh`)
@@ -56,3 +56,5 @@
 
 - [x] 19. Add configurable delay between API calls — prevent rate limit hits when processing large batches
 - [ ] 20. Add `--dry-run` flag — classify and log moves without actually moving messages
+- [ ] 22. Add exponential backoff on HTTP 429 (rate limit) — retry with increasing delay instead of failing
+- [ ] 23. Add `--max-msgs N` flag — cap messages per run (safety valve for `ALL` folder)

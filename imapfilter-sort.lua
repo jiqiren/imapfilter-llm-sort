@@ -94,46 +94,78 @@ local function classify(mailbox, uid)
 end
 
 local inbox = account.INBOX
-local lookback_days = config.imap.lookback_days or 1
-local next_day_days = nil
-if config.imap.lookback_day and config.imap.lookback_day ~= "" then
-  local y, m, d = config.imap.lookback_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$")
-  if y then
-    local target = os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d) })
-    local next_day = target + 86400
-    local now = os.time()
-    lookback_days = math.max(1, math.ceil((now - target) / 86400))
-    next_day_days = math.max(0, math.ceil((now - next_day) / 86400))
-  end
-end
-local recent = inbox:is_newer(lookback_days)
-if next_day_days and next_day_days > 0 then
-  recent = recent - inbox:is_newer(next_day_days)
-end
 
-io.stderr:write("imapfilter-llm-sort: processing " .. #recent .. " messages\n")
+-- Determine which folder(s) to process
+local folder = os.getenv("IMAP_FOLDER") or (config.imap and config.imap.folder) or "INBOX"
+folder = folder:upper()
 
--- Retry stale rows from a previous run that may have crashed mid-classification
-local stale_ids = cache:get_stale_ids_for_config(classifier.config_hash, "sorting")
-if #stale_ids > 0 then
-  io.stderr:write(string.format("Retrying %d stale message(s) from previous run...\n", #stale_ids))
-  for _, msg_id in ipairs(stale_ids) do
-    local found = inbox:contains({ uid = msg_id })
-    if #found > 0 then
-      local uid = found[1][2]
-      local category, _, _ = classify(inbox, uid)
-      if moves[category] ~= nil then
-        io.stderr:write(string.format("  Stale retry: %s → %s\n", msg_id, category))
-        inbox:move_messages(destinations[category], { found[1] })
-      else
-        io.stderr:write(string.format("  Stale retry: %s → INBOX (no match)\n", msg_id))
-      end
-    else
-      io.stderr:write(string.format("  Stale cleanup: %s (no longer in INBOX)\n", msg_id))
-      cache:delete_row(classifier.config_hash, msg_id)
+local function get_recent_set(mailbox)
+  local lookback_days = config.imap.lookback_days or 1
+  local next_day_days = nil
+  if config.imap.lookback_day and config.imap.lookback_day ~= "" then
+    local y, m, d = config.imap.lookback_day:match("^(%d%d%d%d)-(%d%d)-(%d%d)$")
+    if y then
+      local target = os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d) })
+      local next_day = target + 86400
+      local now = os.time()
+      lookback_days = math.max(1, math.ceil((now - target) / 86400))
+      next_day_days = math.max(0, math.ceil((now - next_day) / 86400))
     end
   end
-  io.stderr:write("Stale retry complete.\n")
+  local recent = mailbox:is_newer(lookback_days)
+  if next_day_days and next_day_days > 0 then
+    recent = recent - mailbox:is_newer(next_day_days)
+  end
+  return recent
+end
+
+-- Build list of mailboxes to process
+local mailboxes_to_process = {}
+if folder == "ALL" then
+  local all_mailboxes = account:ls()
+  for _, mb_name in ipairs(all_mailboxes) do
+    -- Skip special/system folders
+    if mb_name ~= "[Gmail]" and mb_name ~= "[Gmail]/All Mail" then
+      local mb = account[mb_name]
+      if mb then
+        table.insert(mailboxes_to_process, { name = mb_name, mailbox = mb })
+      end
+    end
+  end
+else
+  local mb_name = folder == "INBOX" and "INBOX" or folder
+  local mb = account[mb_name]
+  if mb then
+    table.insert(mailboxes_to_process, { name = mb_name, mailbox = mb })
+  else
+    io.stderr:write(string.format("Warning: folder '%s' not found, processing INBOX\n", folder))
+    table.insert(mailboxes_to_process, { name = "INBOX", mailbox = inbox })
+  end
+end
+
+-- Retry stale rows from a previous run (only for INBOX — can't know folder for ALL)
+if folder == "INBOX" then
+  local stale_ids = cache:get_stale_ids_for_config(classifier.config_hash, "sorting")
+  if #stale_ids > 0 then
+    io.stderr:write(string.format("Retrying %d stale message(s) from previous run...\n", #stale_ids))
+    for _, msg_id in ipairs(stale_ids) do
+      local found = inbox:contains({ uid = msg_id })
+      if #found > 0 then
+        local uid = found[1][2]
+        local category, _, _ = classify(inbox, uid)
+        if moves[category] ~= nil then
+          io.stderr:write(string.format("  Stale retry: %s → %s\n", msg_id, category))
+          inbox:move_messages(destinations[category], { found[1] })
+        else
+          io.stderr:write(string.format("  Stale retry: %s → INBOX (no match)\n", msg_id))
+        end
+      else
+        io.stderr:write(string.format("  Stale cleanup: %s (no longer in INBOX)\n", msg_id))
+        cache:delete_row(classifier.config_hash, msg_id)
+      end
+    end
+    io.stderr:write("Stale retry complete.\n")
+  end
 end
 
 local total_time = 0
@@ -149,48 +181,56 @@ local classified = 0
 local moved = 0
 local start_time = socket.gettime()
 
-local n = 0
-for i = #recent, 1, -1 do
-  n = n + 1
-  local mailbox, uid = table.unpack(recent[i])
-  local t0 = socket.gettime()
-  local category, input_tokens, output_tokens = classify(mailbox, uid)
-  local elapsed = socket.gettime() - t0
+for _, mb_info in ipairs(mailboxes_to_process) do
+  local mailbox = mb_info.mailbox
+  local mb_name = mb_info.name
+  local recent = get_recent_set(mailbox)
 
-  total_time = total_time + elapsed
-  total_input = total_input + input_tokens
-  total_output = total_output + output_tokens
+  io.stderr:write(string.format("imapfilter-llm-sort: processing %d messages in %s\n", #recent, mb_name))
 
-  if elapsed > 0 then
-    if elapsed < min_time then min_time = elapsed end
-    if elapsed > max_time then max_time = elapsed end
-  end
-  if input_tokens > 0 then
-    if input_tokens < min_input then min_input = input_tokens end
-    if input_tokens > max_input then max_input = input_tokens end
-  end
-  if output_tokens > 0 then
-    if output_tokens < min_output then min_output = output_tokens end
-    if output_tokens > max_output then max_output = output_tokens end
-  end
+  local n = 0
+  for i = #recent, 1, -1 do
+    n = n + 1
+    local uid = recent[i][2]
+    local t0 = socket.gettime()
+    local category, input_tokens, output_tokens = classify(mailbox, uid)
+    local elapsed = socket.gettime() - t0
 
-  local label = category ~= "" and category or "INBOX"
-  io.stderr:write(string.format(
-    "  [%d/%d] %.1fs in:%d out:%d → %s\n",
-    n, #recent, elapsed, input_tokens, output_tokens, label
-  ))
+    total_time = total_time + elapsed
+    total_input = total_input + input_tokens
+    total_output = total_output + output_tokens
 
-  if moves[category] ~= nil then
-    classified = classified + 1
-    mailbox:move_messages(destinations[category], { recent[i] })
-    moved = moved + 1
+    if elapsed > 0 then
+      if elapsed < min_time then min_time = elapsed end
+      if elapsed > max_time then max_time = elapsed end
+    end
+    if input_tokens > 0 then
+      if input_tokens < min_input then min_input = input_tokens end
+      if input_tokens > max_input then max_input = input_tokens end
+    end
+    if output_tokens > 0 then
+      if output_tokens < min_output then min_output = output_tokens end
+      if output_tokens > max_output then max_output = output_tokens end
+    end
+
+    local label = category ~= "" and category or "INBOX"
+    io.stderr:write(string.format(
+      "  [%d/%d] %.1fs in:%d out:%d → %s\n",
+      n, #recent, elapsed, input_tokens, output_tokens, label
+    ))
+
+    if moves[category] ~= nil then
+      classified = classified + 1
+      mailbox:move_messages(destinations[category], { recent[i] })
+      moved = moved + 1
+    end
   end
 end
 
 local total_elapsed = socket.gettime() - start_time
 io.stderr:write(string.format(
-  "Summary: %d msgs, %d classified, %d moved, %.1fs total\n",
-  #recent, classified, moved, total_elapsed
+  "Summary: %d classified, %d moved, %.1fs total\n",
+  classified, moved, total_elapsed
 ))
 if classified > 0 then
   local avg_time = total_time / classified

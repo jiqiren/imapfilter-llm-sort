@@ -18,6 +18,7 @@ Options:
   -m, --model MODEL      Model name (default: google/gemma-4-12b)
   -k, --api-key KEY      API key (default: nope)
   -D, --delay SECONDS    Seconds between API calls (default: 0)
+  -f, --folder FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders
   -d, --debug            Enable debug output
   -h, --help             Show this help message
 
@@ -37,6 +38,7 @@ zparseopts -D -E -F -- \
   {m,-model}:=MODEL_OPT \
   {k,-api-key}:=API_KEY_OPT \
   {D,-delay}:=DELAY_OPT \
+  {f,-folder}:=FOLDER_OPT \
   {d,-debug}=DEBUG_OPT \
   {h,-help}=HELP_OPT \
   || usage
@@ -54,6 +56,7 @@ else
 fi
 export IMAP_SERVER="${IMAP_SERVER_OPT[-1]:-${IMAP_SERVER:-imap.example.com}}"
 export IMAP_USER="${IMAP_USER_OPT[-1]:-${IMAP_USER:-user@example.com}}"
+export IMAP_FOLDER="${FOLDER_OPT[-1]:-${IMAP_FOLDER:-INBOX}}"
 #export IMAP_PASSWORD="$(security find-generic-password -a ${USER} -s gmailsecret -w)"
 
 SLEEP_SECONDS="${SLEEP_OPT[-1]:-300}"
