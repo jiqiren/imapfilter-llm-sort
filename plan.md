@@ -39,9 +39,13 @@
 - [x] 11. Update `imapfilter-sort.lua` — restructure `classify()` to call `mark_sorting` before body fetch, handle failure reasons (done as part of item 8)
 - [ ] 12. Add `--folder` flag to `macos-loop.zsh` — support `INBOX`, `ALL`, or specific folder name
 - [x] 13. Add `-m` flag to `macos-loop.zsh` — set `OPENAI_MODEL` (comma-separated)
-- [ ] 14. Update `config.example.lua` — show `model` as comma-separated list, document new flags
+- [x] 14. Update `config.example.lua` — show `model` as comma-separated list, document new flags
 - [x] 15. Run verification checks (`lua -e 'dofile(...)'` for each module, `zsh -n macos-loop.zsh`)
 - [x] 16. Fix `classify()` in `imapfilter-sort.lua` — fetch From/Subject/body only on cache miss (currently always fetched, wastes IMAP traffic for cached messages)
+
+### Documentation
+
+- [ ] 21. Update `README.md` — document model escalation (comma-separated models) and stale row retry on crash
 
 ### Cache Maintenance
 

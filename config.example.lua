@@ -2,6 +2,15 @@
 --
 -- Copy or symlink this file to ~/.config/imapfilter-llm-sort/config.lua
 -- All values fall back to environment variables, so most can be omitted.
+--
+-- For looped execution, use macos-loop.zsh (run `macos-loop.zsh -h` for flags):
+--   -s SECONDS   Sleep between runs (default: 300)
+--   -m MODEL     Model name or comma-separated list for escalation
+--   -U URL       OpenAI-compatible API URL
+--   -S HOST      IMAP server hostname
+--   -u USER      IMAP username
+--   -k KEY       API key
+--   -d           Enable debug output
 
 return {
   api = {
@@ -11,7 +20,12 @@ return {
     -- API key. REQUIRED unless your endpoint ignores auth.
     key = os.getenv("OPENAI_API_KEY"),
 
-    -- Model name. Set OPENAI_MODEL to override.
+    -- Model name or comma-separated list of models for escalation.
+    -- When multiple models are listed, the classifier tries them in order.
+    -- On API timeout or HTTP error, it escalates to the next model.
+    -- On parse errors or IMAP failures, it does NOT escalate (conservative).
+    -- Set OPENAI_MODEL to override (e.g. "gpt-4.1-mini,gpt-4o").
+    -- Use -m flag in macos-loop.zsh for the same.
     model = os.getenv("OPENAI_MODEL") or "gpt-4.1-mini",
 
     -- API style: "responses" (OpenAI /v1/responses) or "chat" (/v1/chat/completions).
@@ -104,6 +118,9 @@ return {
 
   -- Optional SQLite cache for classification results.
   -- Skips API calls for emails already classified with the same config.
+  -- Cache key includes config_hash + Message-Id + model, so changing the
+  -- model or categories will re-classify messages.
+  -- Stale rows (status='sorting') from a crashed run are retried at startup.
   sqlite = {
     path = os.getenv("OPENAI_CLASSIFIER_CACHE") or nil,
   },
