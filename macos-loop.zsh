@@ -95,8 +95,13 @@ trap forward_signal INT TERM
 while true; do
   imapfilter -c "${IMAPFILTERCFG}" &
   running_pid=$!
-  wait "$running_pid"
-  running_pid=""
+  if ! wait "$running_pid"; then
+    rc=$?
+    running_pid=""
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] imapfilter exited with code $rc — retrying after sleep" >&2
+  else
+    running_pid=""
+  fi
 
   sleep "${SLEEP_SECONDS}" &
   running_pid=$!
