@@ -64,11 +64,15 @@ them in order and escalates on transient failures:
 This lets you use a fast/cheap model first and fall back to a more capable one when
 the first model times out or returns an HTTP error.
 
-## Crash recovery
+## Cache behavior
 
-If imapfilter crashes mid-classification, messages marked as `status='sorting'` in
-the cache are retried at the start of the next run. Messages no longer in INBOX
-are cleaned up automatically.
+Messages are marked `status='sorting'` in the cache during classification, then
+updated to `done` or `failed` when complete. The SQLite cache is never trimmed
+automatically — entries accumulate indefinitely. For manual inspection or cleanup:
+
+```sh
+sqlite3 ~/.config/imapfilter-llm-sort/classifications.db
+```
 
 ## Dry-run mode
 
