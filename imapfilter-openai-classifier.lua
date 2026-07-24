@@ -279,7 +279,6 @@ function OpenAIEmailClassifier.new(options)
   end
   local config_str = table.concat({
     table.concat(cat_parts, "\0"),
-    table.concat(self.models, ","),   -- use full models chain in hash
     self.system_prompt or "",
     tostring(tonumber(trunc.from) or 0),
     tostring(tonumber(trunc.subject) or 0),
@@ -454,6 +453,19 @@ function OpenAIEmailClassifier:classify_email(email, message_id, cache, cached)
   for _, model in ipairs(self.models) do
     if self.debug then
       io.stderr:write(string.format("OpenAI classifier: attempting model %s\n", model))
+    end
+
+    -- Check cache for this specific model (not just the first)
+    local model_cached = cache and message_id and message_id ~= ""
+      and cache:lookup(self.config_hash, message_id, model)
+    if model_cached then
+      if self.debug then
+        io.stderr:write(string.format(
+          "OpenAI classifier: cache hit for %s -> \"%s\" (in:%d out:%d)\n",
+          model, model_cached.destination, model_cached.tokens_in, model_cached.tokens_out
+        ))
+      end
+      return model_cached.destination, model_cached.tokens_in, model_cached.tokens_out
     end
 
     -- Mark as sorting for this model (INSERT OR IGNORE handles duplicates)
