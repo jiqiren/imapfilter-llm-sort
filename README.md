@@ -163,6 +163,7 @@ Options:
 - `-S, --imap-server HOST` — IMAP server hostname
 - `-u, --imap-user USER` — IMAP username
 - `-U, --openai-url URL` — OpenAI-compatible API endpoint
+- `-A, --api-style STYLE` — API protocol: `"responses"` or `"chat"` (default: `responses`)
 - `-m, --model MODEL` — model name
 - `-k, --api-key KEY` — API key
 - `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)

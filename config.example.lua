@@ -9,6 +9,7 @@
 --   -U URL       OpenAI-compatible API URL
 --   -S HOST      IMAP server hostname
 --   -u USER      IMAP username
+--   -A STYLE     API style: "responses" or "chat" (default: responses)
 --   -k KEY       API key
 --   -d           Enable debug output
 --   -f FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders

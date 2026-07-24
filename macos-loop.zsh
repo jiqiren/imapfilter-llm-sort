@@ -16,6 +16,7 @@ Options:
   -u, --imap-user USER   IMAP username (default: user@example.com)
   -U, --openai-url URL   OpenAI-compatible API URL (default: http://127.0.0.1:1234/v1/responses)
   -m, --model MODEL      Model name (default: google/gemma-4-12b)
+  -A, --api-style STYLE  API style: "responses" or "chat" (default: responses)
   -k, --api-key KEY      API key (default: nope)
   -D, --delay SECONDS    Seconds between API calls (default: 0)
   -f, --folder FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders
@@ -24,8 +25,8 @@ Options:
   -d, --debug            Enable debug output
   -h, --help             Show this help message
 
-Environment variables are also respected (OPENAI_URL, OPENAI_MODEL,
-OPENAI_API_KEY, OPENAI_CLASSIFIER_DEBUG, IMAP_SERVER, IMAP_USER).
+Environment variables are also respected (OPENAI_URL, OPENAI_API_STYLE,
+OPENAI_MODEL, OPENAI_API_KEY, OPENAI_CLASSIFIER_DEBUG, IMAP_SERVER, IMAP_USER).
 Command-line options take precedence.
 EOF
   exit 0
@@ -38,6 +39,7 @@ zparseopts -D -E -F -- \
   {u,-imap-user}:=IMAP_USER_OPT \
   {U,-openai-url}:=OPENAI_URL_OPT \
   {m,-model}:=MODEL_OPT \
+  {A,-api-style}:=API_STYLE_OPT \
   {k,-api-key}:=API_KEY_OPT \
   {D,-delay}:=DELAY_OPT \
   {f,-folder}:=FOLDER_OPT \
@@ -51,6 +53,7 @@ zparseopts -D -E -F -- \
 
 export OPENAI_URL="${OPENAI_URL_OPT[-1]:-${OPENAI_URL:-http://127.0.0.1:1234/v1/responses}}"
 export OPENAI_MODEL="${MODEL_OPT[-1]:-${OPENAI_MODEL:-google/gemma-4-12b}}"
+export OPENAI_API_STYLE="${API_STYLE_OPT[-1]:-${OPENAI_API_STYLE:-responses}}"
 export OPENAI_API_KEY="${API_KEY_OPT[-1]:-${OPENAI_API_KEY:-nope}}"
 export OPENAI_DELAY_BETWEEN_CALLS="${DELAY_OPT[-1]:-${OPENAI_DELAY_BETWEEN_CALLS:-0}}"
 if [[ -n $DEBUG_OPT ]]; then
