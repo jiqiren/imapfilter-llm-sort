@@ -72,7 +72,7 @@ else
 fi
 #export IMAP_PASSWORD="$(security find-generic-password -a ${USER} -s gmailsecret -w)"
 
-SLEEP_SECONDS="${SLEEP_OPT[-1]:-300}"
+SLEEP_SECONDS="${SLEEP[-1]:-300}"
 
 export IMAPFILTERCFG="${0:A:h}/imapfilter-sort.lua"
 
@@ -95,6 +95,17 @@ forward_signal() {
 
 trap forward_signal INT TERM
 
+# Print a live countdown (M:SS) to stderr, updating once per second.
+countdown() {
+  local remaining=$1
+  while (( remaining > 0 )); do
+    printf '\rnext run in %d:%02d   ' $(( remaining / 60 )) $(( remaining % 60 )) >&2
+    sleep 1
+    remaining=$(( remaining - 1 ))
+  done
+  printf '\n' >&2
+}
+
 while true; do
   imapfilter -c "${IMAPFILTERCFG}" &
   running_pid=$!
@@ -106,8 +117,5 @@ while true; do
     running_pid=""
   fi
 
-  sleep "${SLEEP_SECONDS}" &
-  running_pid=$!
-  wait "$running_pid"
-  running_pid=""
+  countdown "${SLEEP_SECONDS}"
 done
