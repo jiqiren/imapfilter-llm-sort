@@ -139,6 +139,7 @@ local function build_payload(config, prompt)
         { role = "user", content = prompt },
       },
       temperature = 0,
+      stream = false,
     }
     if response_format then
       payload.response_format = response_format
@@ -158,6 +159,54 @@ local function build_payload(config, prompt)
     payload.text = { format = response_format }
   end
   return dkjson.encode(payload)
+end
+
+local function parse_sse(raw, debug)
+  if not raw or not raw:match("^data:") then
+    return nil
+  end
+
+  local parts = {}
+  local usage = nil
+  for line in raw:gmatch("[^\r\n]+") do
+    local data = line:match("^data:%s*(.*)$")
+    if data then
+      if data == "[DONE]" then
+        break
+      end
+      local ok, chunk = pcall(dkjson.decode, data)
+      if ok and type(chunk) == "table" then
+        local choices = chunk.choices
+        if type(choices) == "table" and #choices > 0 then
+          local delta = choices[1].delta
+          if type(delta) == "table" and type(delta.content) == "string" then
+            table.insert(parts, delta.content)
+          end
+        end
+        if chunk.usage then
+          usage = chunk.usage
+        end
+      end
+    end
+  end
+
+  if #parts == 0 then
+    if debug then io.stderr:write("OpenAI classifier: SSE stream contained no content\n") end
+    return nil
+  end
+
+  local content = table.concat(parts)
+  if debug then
+    io.stderr:write(string.format(
+      "OpenAI classifier: reassembled %d bytes from %d SSE chunks\n",
+      #content, #parts
+    ))
+  end
+
+  return dkjson.encode({
+    content = content,
+    usage = usage,
+  })
 end
 
 local function normalize_category(category, valid_names)
@@ -422,6 +471,32 @@ function OpenAIEmailClassifier:_attempt_model(model)
 
   local input_tokens, output_tokens = 0, 0
   local ok_parse, parsed = pcall(dkjson.decode, raw)
+
+  local raw_for_parse
+  if ok_parse and type(parsed) == "table" then
+    raw_for_parse = dkjson.encode(parsed)
+  else
+    -- fm serve and some OpenAI-compatible servers stream SSE even when stream
+    -- was not requested. Reassemble the deltas into a normal response.
+    local sse_text, sse_usage = nil, nil
+    local sse_ok, sse_wrapper = pcall(dkjson.decode, parse_sse(raw, self.debug) or "null")
+    if sse_ok and type(sse_wrapper) == "table" then
+      sse_text = sse_wrapper.content
+      sse_usage = sse_wrapper.usage
+    end
+    if sse_text then
+      raw_for_parse = dkjson.encode({
+        choices = { { message = { content = sse_text } } },
+      })
+      if sse_usage then
+        input_tokens = sse_usage.input_tokens or 0
+        output_tokens = sse_usage.output_tokens or 0
+      end
+    else
+      raw_for_parse = raw
+    end
+  end
+
   if ok_parse and type(parsed) == "table" and parsed.usage then
     input_tokens = parsed.usage.input_tokens or 0
     output_tokens = parsed.usage.output_tokens or 0
@@ -434,9 +509,6 @@ function OpenAIEmailClassifier:_attempt_model(model)
   if not code_num or code_num < 200 or code_num >= 300 then
     return "", input_tokens, output_tokens, "http_error"
   end
-
-  -- Re-encode parsed JSON for parse_response; fall back to raw on parse failure
-  local raw_for_parse = ok_parse and dkjson.encode(parsed) or raw
 
   local valid_names = {}
   for _, cat in ipairs(self.categories) do

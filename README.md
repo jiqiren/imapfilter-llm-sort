@@ -151,6 +151,10 @@ imapfilter -c imapfilter-sort.lua
 The `json_schema` format is derived from your `categories` (value-constrained
 `category` field plus `confidence` and `reason`).
 
+`fm serve` may return responses as server-sent events even when `stream` is
+false. The classifier detects SSE streams and reassembles the deltas before
+parsing, so no extra configuration is needed.
+
 ### Debug mode
 
 ```sh
