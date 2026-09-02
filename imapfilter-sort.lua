@@ -30,6 +30,8 @@ local classifier = OpenAIEmailClassifier.new({
   url = config.api.url,
   models = config.api.model,
   style = config.api.style,
+  response_format = config.api.response_format
+    or os.getenv("OPENAI_RESPONSE_FORMAT"),
   timeout_seconds = config.api.timeout_seconds,
   delay_between_calls = config.api.delay_between_calls,
   dry_run = config.api.dry_run,

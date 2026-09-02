@@ -87,32 +87,77 @@ local function build_prompt(email, config)
   return table.concat(lines, "\n")
 end
 
+local function build_json_schema(categories)
+  local names = {}
+  for _, cat in ipairs(categories or {}) do
+    table.insert(names, cat.name)
+  end
+  table.insert(names, "")
+  return {
+    type = "object",
+    properties = {
+      category = { type = "string", enum = names },
+      confidence = { type = "number" },
+      reason = { type = "string" },
+    },
+    required = { "category", "confidence", "reason" },
+    additionalProperties = false,
+  }
+end
+
+local function build_response_format(style, format_opt, categories)
+  if format_opt == "none" or not format_opt or format_opt == "" then
+    return nil
+  end
+
+  if format_opt == "json_schema" then
+    local schema = build_json_schema(categories)
+    if style == "chat" then
+      return {
+        type = "json_schema",
+        json_schema = { name = "email_classification", schema = schema },
+      }
+    end
+    return { type = "json_schema", name = "email_classification", schema = schema }
+  end
+
+  return { type = "json_object" }
+end
+
 local function build_payload(config, prompt)
   local system_prompt = config.system_prompt
     or "You sort emails into existing IMAP mailboxes. "
     .. "You are conservative and return valid JSON only."
 
+  local response_format = build_response_format(config.style, config.response_format, config.categories)
+
   if config.style == "chat" then
-    return dkjson.encode({
+    local payload = {
       model = config.model,
       messages = {
         { role = "system", content = system_prompt },
         { role = "user", content = prompt },
       },
       temperature = 0,
-      response_format = { type = "json_object" },
-    })
+    }
+    if response_format then
+      payload.response_format = response_format
+    end
+    return dkjson.encode(payload)
   end
 
-  return dkjson.encode({
+  local payload = {
     model = config.model,
     input = {
       { role = "system", content = system_prompt },
       { role = "user", content = prompt },
     },
     temperature = 0,
-    text = { format = { type = "json_object" } },
-  })
+  }
+  if response_format then
+    payload.text = { format = response_format }
+  end
+  return dkjson.encode(payload)
 end
 
 local function normalize_category(category, valid_names)
@@ -261,6 +306,7 @@ function OpenAIEmailClassifier.new(options)
     model = models_list[1],          -- first model (backward compat)
     models = models_list,             -- full chain for escalation
     style = options.style or "responses",
+    response_format = options.response_format or "json_object",
     timeout = tonumber(options.timeout_seconds) or 600,
     delay_between_calls = tonumber(options.delay_between_calls) or 0,
     rate_limit_max_retries = tonumber(options.rate_limit_max_retries) or 3,
@@ -323,6 +369,8 @@ function OpenAIEmailClassifier:_attempt_model(model)
     model = model,
     style = self.style,
     system_prompt = self.system_prompt,
+    response_format = self.response_format,
+    categories = self.categories,
   }, prompt)
 
   http.TIMEOUT = self.timeout

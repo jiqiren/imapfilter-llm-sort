@@ -93,6 +93,7 @@ in the environment).
 | `OPENAI_URL` | `api.url` | `https://api.openai.com/v1/responses` | API endpoint URL |
 | `OPENAI_MODEL` | `api.model` | `qwen/qwen3-4b-2507,google/gemma-4-12b` | Model name to request |
 | `OPENAI_API_STYLE` | `api.style` | `responses` | API protocol: `"responses"` or `"chat"` |
+| `OPENAI_RESPONSE_FORMAT` | `api.response_format` | `json_object` | Structured output: `"json_object"`, `"json_schema"`, or `"none"` |
 | `OPENAI_TIMEOUT_SECONDS` | `api.timeout_seconds` | `600` | HTTP request timeout in seconds |
 | `OPENAI_CLASSIFIER_DEBUG` | `api.debug` | (off) | Set to `1` to log raw API responses to stderr |
 | `OPENAI_CLASSIFIER_DRY_RUN` | `api.dry_run` | (off) | Set to `1` to classify without moving messages |
@@ -133,6 +134,23 @@ export OPENAI_MODEL="your-model"
 imapfilter -c imapfilter-sort.lua
 ```
 
+### Apple `fm serve` (local)
+
+`fm serve` exposes an OpenAI-compatible chat endpoint on
+`http://localhost:8000/v1/chat/completions` but rejects `json_object`
+structured output. Use `json_schema` instead:
+
+```sh
+export OPENAI_API_STYLE="chat"
+export OPENAI_URL="http://localhost:8000/v1/chat/completions"
+export OPENAI_MODEL="apple-fm"
+export OPENAI_RESPONSE_FORMAT="json_schema"
+imapfilter -c imapfilter-sort.lua
+```
+
+The `json_schema` format is derived from your `categories` (value-constrained
+`category` field plus `confidence` and `reason`).
+
 ### Debug mode
 
 ```sh
@@ -164,6 +182,7 @@ Options:
 - `-u, --imap-user USER` — IMAP username
 - `-U, --openai-url URL` — OpenAI-compatible API endpoint
 - `-A, --api-style STYLE` — API protocol: `"responses"` or `"chat"` (default: `responses`)
+- `-R, --response-format FORMAT` — structured output: `"json_object"`, `"json_schema"`, or `"none"` (default: `json_object`) — use `json_schema` for Apple `fm serve`
 - `-m, --model MODEL` — model name
 - `-k, --api-key KEY` — API key
 - `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)

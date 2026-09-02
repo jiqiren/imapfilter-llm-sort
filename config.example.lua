@@ -10,6 +10,7 @@
 --   -S HOST      IMAP server hostname
 --   -u USER      IMAP username
 --   -A STYLE     API style: "responses" or "chat" (default: responses)
+--   -R FORMAT    Response format: "json_object", "json_schema", or "none" (default: json_object)
 --   -k KEY       API key
 --   -d           Enable debug output
 --   -f FOLDER    IMAP folder to process (default: INBOX). Use ALL for all folders
@@ -34,6 +35,13 @@ return {
 
     -- API style: "responses" (OpenAI /v1/responses) or "chat" (/v1/chat/completions).
     style = os.getenv("OPENAI_API_STYLE") or "responses",
+
+    -- Structured output format: "json_object" (default, works with OpenAI and most
+    -- compatible endpoints), "json_schema" (required by some servers like Apple's
+    -- `fm serve`, which reject json_object), or "none" to omit the field and rely
+    -- on prompt instructions alone.
+    -- Set OPENAI_RESPONSE_FORMAT to override.
+    response_format = os.getenv("OPENAI_RESPONSE_FORMAT") or "json_object",
 
     -- HTTP timeout in seconds.
     timeout_seconds = tonumber(os.getenv("OPENAI_TIMEOUT_SECONDS")) or 600,
