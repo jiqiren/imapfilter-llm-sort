@@ -83,9 +83,9 @@ changes. In dry-run mode, the cache is read but never written to.
 
 ## Environment variables
 
-All are optional if set in `config.lua`, but `OPENAI_API_KEY` and
-`IMAP_PASSWORD` are required at runtime (at least one of those two must be set
-in the environment).
+All are optional if set in `config.lua`, but both `OPENAI_API_KEY`
+(auth for the LLM endpoint) and `IMAP_PASSWORD` (auth to your mail server)
+must be available at runtime — via env var or config file.
 
 | Variable | Config key | Default | Description |
 |---|---|---|---|
@@ -189,7 +189,13 @@ Options:
 - `-R, --response-format FORMAT` — structured output: `"json_object"`, `"json_schema"`, or `"none"` (default: `json_object`) — use `json_schema` for Apple `fm serve`
 - `-m, --model MODEL` — model name
 - `-k, --api-key KEY` — API key
-- `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)
+- `-D, --delay SECONDS` — seconds between API calls (default: 0)
+- `-f, --folder FOLDER` — IMAP folder to process (`INBOX`, specific name, or `ALL`; default: `INBOX`)
+- `-M, --max-msgs N` — max messages per run (0 = no limit; safety valve for `ALL`)
+- `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)   
+  Note: the script's own defaults differ from `config.example.lua`
+  (`http://127.0.0.1:1234/v1/responses`, model `google/gemma-4-12b`), so pass
+  explicit flags if you don't rely on env vars or those local defaults.
 - `-n, --dry-run` — classify and log without moving messages
 - `-h, --help` — print usage
 
@@ -208,14 +214,17 @@ without hitting the API — saving time and tokens.
 The cache is stored at `~/.config/imapfilter-llm-sort/classifications.db` by
 default. Override with `OPENAI_CLASSIFIER_CACHE` or `config.sqlite.path`.
 
-**What's cached:** the config hash (deterministic MD5 of categories, model,
-system prompt, truncation), Message-Id, model name, token counts, and the
-classified destination (including `""` for unknown).
+**What's cached:** the config hash (deterministic MD5 of categories, system
+prompt, and truncation settings — **not** the model), Message-Id, model name,
+token counts, and the classified destination (including `""` for unknown).
 
-**Cache invalidation:** changing categories, model, system prompt, or
-truncation settings produces a new config hash — old entries are ignored
-but not deleted. Run `sqlite3 ~/.config/imapfilter-llm-sort/classifications.db` for
-manual inspection or cleanup.
+**Cache invalidation:** changing categories, system prompt, or truncation
+settings produces a new config hash — old entries are ignored but not
+deleted. The model is **not** part of the config hash; instead each entry is
+keyed by `config_hash + Message-Id + model`, so switching models simply looks
+up (and stores) different rows rather than invalidating anything.
+Run `sqlite3 ~/.config/imapfilter-llm-sort/classifications.db` for manual
+inspection or cleanup.
 
 When `OPENAI_CLASSIFIER_DEBUG=1`, cache hits, misses, and stores are logged
 to stderr.
