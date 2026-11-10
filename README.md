@@ -14,24 +14,101 @@ Unknown categories leave messages in INBOX (conservative by design).
 
 ## Setup
 
-### 1. Install imapfilter
+Everything is installed with Homebrew except the five Lua rocks, which have no
+formulae and must come from LuaRocks. The brew `luarocks` formula targets the
+same Lua 5.5 that imapfilter embeds, so the two stay in sync.
+
+### 1. Install brew packages
 
 ```sh
-brew install imapfilter
+brew install imapfilter luarocks lua
 ```
 
-### 2. Install Lua dependencies
+- **`imapfilter`** — the host program. This repo is an imapfilter config script,
+  not a standalone binary. Formula 2.8.6; links `lua`, `openssl@4`, `pcre2`.
+- **`luarocks`** — needed only to install the Lua rocks in step 2. Bottled; its
+  only dependency is `lua`, and it reports `lua_version 5.5`.
+- **`lua`** — brew's `luarocks` depends on it, but it is listed explicitly so
+  `luarocks` is guaranteed to build rocks against Lua 5.5.1 — the same
+  `liblua.5.5.dylib` that imapfilter links against.
+
+imapfilter pulls in `openssl@4` and `pcre2` on its own; no other brew packages
+are required. The CLT compiler (`cc` / `c++`) is used to build the rocks —
+install it with `xcode-select --install` if `cc` is missing.
+
+### 2. Install Lua rocks
+
+None of the seven Lua modules this project needs exist as Homebrew formulae, so
+they come from LuaRocks. Order matters only in that `luasec` depends on
+`luasocket`:
 
 ```sh
-brew install luarocks
-luarocks --lua-version 5.5 install luasocket
-luarocks --lua-version 5.5 install luasec
-luarocks --lua-version 5.5 install dkjson
-luarocks --lua-version 5.5 install dromozoa-sqlite3
-luarocks --lua-version 5.5 install md5
+luarocks install dkjson
+luarocks install luasocket
+luarocks install luasec
+luarocks install md5
+luarocks install dromozoa-sqlite3
 ```
 
-### 3. Configure
+`--lua-version 5.5` is unnecessary: brew's `luarocks` already resolves to 5.5
+(verify with `luarocks config lua_version`). Add it only if you have several Lua
+versions installed. Rocks install into `/opt/homebrew/lib/luarocks/rocks-5.5/`,
+which is already on imapfilter's `package.path`/`package.cpath`.
+
+`luasocket` also supplies `ltn12`, so five rocks cover all seven `require()`s:
+
+| `require()` name | Rock | Homebrew formula? | Used for |
+|---|---|---|---|
+| `socket`, `socket.http` | `luasocket` | no — luarocks only | plain-HTTP requests (local endpoints), timeouts |
+| `ltn12` | `luasocket` | no — luarocks only | request body source / response sink |
+| `ssl.https` | `luasec` | no — luarocks only | HTTPS requests to the LLM API |
+| `dkjson` | `dkjson` | no — luarocks only | encoding payloads, decoding API responses |
+| `md5` | `md5` | no — luarocks only | config hash for the cache key |
+| `dromozoa.sqlite3` | `dromozoa-sqlite3` | no — luarocks only | SQLite classification cache |
+
+All five build cleanly with just the packages above. `luasec` auto-detects
+OpenSSL in the Homebrew prefix, `md5` bundles its own MD5 implementation, and
+`dromozoa-sqlite3` links the system `libsqlite3` — so no `openssl`, `sqlite`, or
+`pkg-config` formula is needed.
+
+If a C rock fails to configure, point it at the keg explicitly:
+
+```sh
+luarocks install luasec OPENSSL_DIR="$(brew --prefix openssl@4)"
+```
+
+### 3. Verify the modules load
+
+imapfilter embeds its own Lua 5.5, so check the modules resolve for *that*
+interpreter — a bare `lua -e` check can pass while imapfilter still fails, and
+vice versa. All seven modules must load:
+
+```sh
+printf '%s\n' \
+  'for _,m in ipairs({"socket","socket.http","ltn12","ssl.https","dkjson","md5","dromozoa.sqlite3"}) do' \
+  '  local ok,err=pcall(require,m)' \
+  '  io.stderr:write(string.format("%-18s %s\n",m,ok and "OK"' \
+  '    or "FAIL: "..tostring(err):gsub("%s+"," "):gsub(" no file[^;]*","")))' \
+  'end' > /tmp/modcheck.lua
+imapfilter -c /tmp/modcheck.lua
+```
+
+Expected output:
+
+```
+socket             OK
+socket.http        OK
+ltn12              OK
+ssl.https          OK
+dkjson             OK
+md5                OK
+dromozoa.sqlite3   OK
+```
+
+A `FAIL` usually means the rocks went to a different Lua tree — check
+`luarocks config lua_version` and `luarocks config rocks_trees`.
+
+### 4. Configure
 
 Copy and edit the config file:
 
@@ -44,7 +121,9 @@ Edit `~/.config/imapfilter-llm-sort/config.lua`:
 - Set `imap.server`, `imap.username`, `imap.ssl`.
 - Confirm destination mailboxes exist with the names listed in `categories[].mailbox`.
 - Adjust `categories[]` to define your own sorting rules (name, mailbox, LLM description).
-- Update the path in `imapfilter-sort.lua` if you cloned the repo elsewhere.
+- `imapfilter-sort.lua` loads the two Lua modules from a hardcoded path:
+  `$HOME/proj/imapfilter-llm-sort/`. If you cloned the repo anywhere else, edit
+  both `dofile()` paths (the classifier and the cache module) to match.
 
 All config values can be set via environment variables; the config file falls
 back to them automatically.
@@ -148,8 +227,10 @@ export OPENAI_RESPONSE_FORMAT="json_schema"
 imapfilter -c imapfilter-sort.lua
 ```
 
-The `json_schema` format is derived from your `categories` (value-constrained
-`category` field plus `confidence` and `reason`).
+The `json_schema` format is derived from your `categories`: a `category` field
+whose enum is every `categories[].name` plus `""` (the "uncertain / leave in
+INBOX" option), along with `confidence` and `reason`. All three properties are
+required and additional properties are rejected.
 
 `fm serve` may return responses as server-sent events even when `stream` is
 false. The classifier detects SSE streams and reassembles the deltas before
@@ -192,12 +273,14 @@ Options:
 - `-D, --delay SECONDS` — seconds between API calls (default: 0)
 - `-f, --folder FOLDER` — IMAP folder to process (`INBOX`, specific name, or `ALL`; default: `INBOX`)
 - `-M, --max-msgs N` — max messages per run (0 = no limit; safety valve for `ALL`)
-- `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)   
-  Note: the script's own defaults differ from `config.example.lua`
-  (`http://127.0.0.1:1234/v1/responses`, model `google/gemma-4-12b`), so pass
-  explicit flags if you don't rely on env vars or those local defaults.
+- `-d, --debug` — enable debug output (`OPENAI_CLASSIFIER_DEBUG=1`)
 - `-n, --dry-run` — classify and log without moving messages
 - `-h, --help` — print usage
+
+Note: `macos-loop.zsh`'s own defaults differ from `config.example.lua` — it
+defaults to `http://127.0.0.1:1234/v1/responses` with model
+`google/gemma-4-12b`. Pass explicit flags unless you set the env vars or want
+those local defaults.
 
 CLI options override environment variables. `IMAP_PASSWORD` should still be set
 in the environment since it's not accepted as a CLI flag.

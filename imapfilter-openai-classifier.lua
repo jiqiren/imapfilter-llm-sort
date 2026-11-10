@@ -1,12 +1,15 @@
 -- OpenAI-compatible email classifier for imapfilter.
 --
 -- Dependencies (install once):
---   brew install luarocks
---   luarocks --lua-version 5.5 install luasocket
---   luarocks --lua-version 5.5 install luasec
---   luarocks --lua-version 5.5 install dkjson
---   luarocks --lua-version 5.5 install dromozoa-sqlite3
---   luarocks --lua-version 5.5 install md5
+--   brew install imapfilter luarocks lua
+--   luarocks install dkjson
+--   luarocks install luasocket      # provides socket, socket.http, ltn12
+--   luarocks install luasec         # provides ssl.https
+--   luarocks install md5
+--   luarocks install dromozoa-sqlite3
+--
+-- Brew's luarocks targets Lua 5.5 (the version imapfilter embeds), so
+-- --lua-version 5.5 is not needed. See README "Setup".
 --
 -- Usage from your imapfilter config:
 --

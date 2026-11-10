@@ -25,11 +25,17 @@ User config lives at `~/.config/imapfilter-llm-sort/config.lua`.
 ## Verify
 
 ```bash
-lua -e 'dofile("imapfilter-openai-classifier.lua")'   # must not error
-lua -e 'dofile("imapfilter-classifier-cache.lua")'     # must not error
-lua -e 'dofile("imapfilter-sort.lua")'             # errors on IMAP connect (expected)
+# All 7 required modules must load under imapfilter's own Lua 5.5 —
+# see README "Setup / Verify the modules load" for a ready-made snippet.
+imapfilter -c /tmp/modcheck.lua
+
+# Module smoke test (classifier .new + cache round-trip) also via imapfilter.
 zsh -n macos-loop.zsh                                 # must pass syntax check
 ```
+
+Note: `lua -e 'dofile(...)'` is misleading here — prefer running checks through
+`imapfilter -c`, since imapfilter embeds its own Lua 5.5 and has its own
+`package.path`/`cpath`.
 
 Integration test requires imapfilter:
 ```bash
@@ -90,13 +96,28 @@ Temperature is always 0. Both styles include a configurable system prompt.
 
 ## Dependencies
 
+Brew (everything except the Lua rocks):
+
 ```bash
-brew install luarocks
-luarocks --lua-version 5.5 install luasocket
-luarocks --lua-version 5.5 install luasec
-luarocks --lua-version 5.5 install dkjson
-luarocks --lua-version 5.5 install dromozoa-sqlite3
-luarocks --lua-version 5.5 install md5
+brew install imapfilter luarocks lua
 ```
 
-Runtime: imapfilter 2.8.5 links Lua 5.5.0 + OpenSSL3 (both Homebrew).
+- `imapfilter` 2.8.6 — host program; links `lua`, `openssl@4`, `pcre2`.
+- `luarocks` 3.13.0 — only needed to install rocks; depends on `lua`, reports
+  `lua_version 5.5`, so `--lua-version 5.5` is not required.
+- `lua` 5.5.1 — matches the `liblua.5.5.dylib` imapfilter links.
+
+Rocks (no brew formulae exist for any of these):
+
+```bash
+luarocks install dkjson            # pure Lua
+luarocks install luasocket         # provides socket, socket.http, ltn12 (C)
+luarocks install luasec            # provides ssl.https (C; auto-finds OpenSSL in brew prefix)
+luarocks install md5               # (C; bundles own MD5, no OpenSSL needed)
+luarocks install dromozoa-sqlite3  # (C++; links system libsqlite3)
+```
+
+All five build with just the brew packages above plus the CLT compiler — no
+`openssl`/`sqlite`/`pkg-config` formula and no `OPENSSL_DIR` override needed.
+Rocks land in `/opt/homebrew/lib/luarocks/rocks-5.5/`, already on imapfilter's
+search path. See README "Setup" for the full require()-to-rock table.

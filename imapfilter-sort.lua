@@ -151,7 +151,7 @@ else
   end
 end
 
--- Safety valve: max messages per run (shared between stale retry and main loop)
+-- Safety valve: cap on total messages processed in this run
 local max_msgs = tonumber(config.imap and config.imap.max_msgs) or 0
 local processed = 0
 

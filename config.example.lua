@@ -166,7 +166,8 @@ return {
   -- Skips API calls for emails already classified with the same config.
   -- Cache key includes config_hash + Message-Id + model, so changing the
   -- model or categories will re-classify messages.
-  -- Stale rows (status='sorting') from a crashed run are retried at startup.
+  -- The database is never trimmed automatically; rows for 'sorting' (crashed
+  -- run) or 'failed' lookups are simply retried on the next run.
   sqlite = {
     path = os.getenv("OPENAI_CLASSIFIER_CACHE") or nil,
   },
